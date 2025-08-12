@@ -44,7 +44,7 @@ def test_framer_agent(run_context, source_spec, blackboard):
     
     result = agent.run(run_context, source_spec, blackboard)
     
-    assert result.status == Status.OK
+    assert result.status == Status.OK.value
     assert "framed_spec" in result.notes["action"]
     assert result.updated_spec == source_spec  # Should return the same spec in stub
 
@@ -55,7 +55,7 @@ def test_prd_writer_agent(run_context, source_spec, blackboard):
     
     result = agent.run(run_context, source_spec, blackboard)
     
-    assert result.status == Status.OK
+    assert result.status == Status.OK.value
     assert len(result.artifacts) == 1
     assert result.artifacts[0].name == "prd.md"
     assert result.artifacts[0].pack == PackType.BALANCED
@@ -67,7 +67,7 @@ def test_diagrammer_agent(run_context, source_spec, blackboard):
     
     result = agent.run(run_context, source_spec, blackboard)
     
-    assert result.status == Status.OK
+    assert result.status == Status.OK.value
     assert len(result.artifacts) >= 1  # Should create lifecycle and/or sequence diagrams
     
     # Check that at least one diagram was created
@@ -81,7 +81,7 @@ def test_qa_architect_agent(run_context, source_spec, blackboard):
     
     result = agent.run(run_context, source_spec, blackboard)
     
-    assert result.status == Status.OK
+    assert result.status == Status.OK.value
     assert len(result.artifacts) == 1
     assert result.artifacts[0].name == "test_plan.md"
     assert "test_architecture_designed" in result.notes["action"]

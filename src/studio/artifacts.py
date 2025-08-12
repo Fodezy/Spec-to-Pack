@@ -100,7 +100,7 @@ class AgentOutput(BaseModel):
     notes: Dict[str, Any] = Field(default_factory=dict)
     artifacts: List[Artifact] = Field(default_factory=list) 
     updated_spec: Optional[Any] = None  # Will be SourceSpec, but avoiding circular import
-    status: str  # Will be Status enum value
+    status: str  # Status enum value as string
     
     class Config:
         arbitrary_types_allowed = True

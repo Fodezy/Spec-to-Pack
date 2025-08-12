@@ -51,7 +51,7 @@ def test_validate_with_valid_spec(tmp_path):
     result = runner.invoke(main, ["validate", str(spec_file)])
     
     # Should validate successfully
-    assert "✅ Validation passed" in result.output
+    assert "PASS: Validation passed" in result.output
 
 
 def test_generate_dry_run():
@@ -60,4 +60,4 @@ def test_generate_dry_run():
     result = runner.invoke(main, ["generate", "--dry-run"])
     
     assert result.exit_code == 0
-    assert "🧪 Dry run mode" in result.output
+    assert "[DRY-RUN] Dry run mode" in result.output

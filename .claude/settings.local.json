@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(bash:*)",
-      "Bash(gh issue:*)"
+      "Bash(gh issue:*)",
+      "Bash(python -m pytest tests/unit/test_agents.py::test_framer_agent -v)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

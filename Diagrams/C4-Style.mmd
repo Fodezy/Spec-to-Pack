@@ -1,0 +1,39 @@
+flowchart LR
+  subgraph Local["Local Runtime"]
+    CLI["studiogen CLI"]
+    ORCH["Orchestrator"]
+    SPEC["SpecBuilder"]
+    FRAMER["FramerAgent (lite)"]
+    VALID["SchemaValidator"]
+    AGENTS["Content Agents (PRD/Diagram/Roadmap/QA)"]
+    TMPL["TemplateRenderer (Jinja2)"]
+    PKG["Packager"]
+    AUD[/"Audit Log (JSONL)"/]
+    OUT[("Output Directory")]
+  end
+
+  subgraph Research["Optional Research Mode"]
+    LIB["LibrarianAgent"]
+    VS[("Vector Store")]
+  end
+
+  subgraph CI["CI / GitHub Actions"]
+    CIJOB["Validate Contracts & E2E"]
+  end
+
+  CLI --> ORCH
+  ORCH --> SPEC
+  SPEC --> VALID
+  ORCH --> FRAMER
+  ORCH --> AGENTS
+  ORCH --> TMPL
+  TMPL --> OUT
+  ORCH --> PKG
+  PKG --> OUT
+  ORCH --> AUD
+
+  %% Optional path only when --research is enabled
+  ORCH -.research.-> LIB
+  LIB --> VS
+
+  OUT --> CIJOB

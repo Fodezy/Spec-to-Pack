@@ -1,0 +1,10 @@
+flowchart TD
+  A[Start: studiogen generate] --> B[Collect Inputs: Idea Card + Decision Sheet]
+  B --> C{Validate SourceSpec}
+  C -- "Invalid" --> E[Exit code 2 with JSON pointer errors]
+  C -- "Valid" --> D[Run Orchestrator]
+  D --> G[Run Agents]
+  G --> H[Render Templates]
+  H --> I[Package into ZIP + Manifest]
+  I --> J[CI: Validate Contracts & Run E2E Tests]
+  J --> K[Done]

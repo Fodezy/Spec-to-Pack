@@ -1,27 +1,44 @@
 sequenceDiagram
+  autonumber
   participant U as User
-  participant CLI as CLI
-  participant OR as Orchestrator
-  participant SB as SpecBuilder
-  participant VA as SchemaValidator
+  participant CLI as CLI (studiogen)
+  participant ORCH as Orchestrator
+  participant SPEC as SpecBuilder
+  participant VALID as SchemaValidator
+  participant FRA as Framer (lite)
+  participant LIB as LibrarianAgent
+  participant VS as Vector Store
   participant AG as Content Agents
-  participant TR as TemplateRenderer
-  participant PK as Packager
-  participant FS as Filesystem
-  participant GT as Git Remote
+  participant TMP as TemplateRenderer
+  participant PKG as Packager
+  participant FS as Output Dir
+  participant AUD as Audit Log
 
-  U->>CLI: studiogen generate --idea --decisions
-  CLI->>OR: run(specInputs, dials)
-  OR->>SB: buildSpec(idea, decisions)
-  SB-->>OR: sourceSpec
-  OR->>VA: validate(sourceSpec, schema)
-  VA-->>OR: ok|errors
-  OR->>AG: produceContexts(sourceSpec)
-  AG-->>OR: sections, diagrams, roadmap
-  OR->>TR: render(templates, data)
-  TR-->>FS: write artifacts
-  OR->>PK: package(outputs)
-  PK-->>FS: zips + manifest
-  OR->>FS: git add/commit/push
-  FS-->>GT: update refs
-  OR-->>CLI: result(run_id, locations)
+  U->>CLI: run generate (--offline | --research)
+  CLI->>ORCH: start(run_id, dials)
+  ORCH->>SPEC: build_spec(idea, decisions)
+  SPEC-->>ORCH: SourceSpec
+  ORCH->>VALID: validate(SourceSpec)
+  VALID-->>ORCH: ok | errors
+  alt invalid spec
+    ORCH->>AUD: log(validation_failed, errors)
+    ORCH-->>CLI: exit(2)
+  else valid
+    ORCH->>FRA: fill_required_fields(SourceSpec)
+    FRA-->>ORCH: SourceSpec'
+    opt research mode
+      ORCH->>LIB: fetch_and_chunk(references)
+      LIB->>VS: upsert(embeddings)
+      VS-->>LIB: ok
+      LIB-->>ORCH: context_ready
+    end
+    ORCH->>AG: generate_artifacts(SourceSpec', context?)
+    AG-->>ORCH: artifact_data
+    ORCH->>TMP: render(templates, artifact_data)
+    TMP-->>ORCH: files
+    ORCH->>PKG: package(files → zips, manifest)
+    PKG-->>ORCH: zips + manifest
+    ORCH->>FS: write(files, zips, manifest)
+    ORCH->>AUD: log(run_completed)
+    ORCH-->>CLI: exit(0)
+  end

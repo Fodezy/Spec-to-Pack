@@ -33,7 +33,7 @@ class FramerAgent(Agent):
             notes={"action": "framed_spec", "filled_fields": []},
             artifacts=[],
             updated_spec=spec,
-            status=Status.OK
+            status=Status.OK.value
         )
 
 
@@ -49,14 +49,14 @@ class LibrarianAgent(Agent):
             return AgentOutput(
                 notes={"action": "skipped_research", "reason": "offline_mode"},
                 artifacts=[],
-                status=Status.OK
+                status=Status.OK.value
             )
         
         # Stub implementation
         return AgentOutput(
             notes={"action": "research_completed", "sources": []},
             artifacts=[],
-            status=Status.OK
+            status=Status.OK.value
         )
 
 
@@ -71,7 +71,7 @@ class SlicerAgent(Agent):
         return AgentOutput(
             notes={"action": "content_sliced"},
             artifacts=[],
-            status=Status.OK
+            status=Status.OK.value
         )
 
 
@@ -97,7 +97,7 @@ class PRDWriterAgent(Agent):
         return AgentOutput(
             notes={"action": "prd_generated", "sections": ["overview", "requirements", "acceptance"]},
             artifacts=[prd_artifact],
-            status=Status.OK
+            status=Status.OK.value
         )
 
 
@@ -134,7 +134,7 @@ class DiagrammerAgent(Agent):
         return AgentOutput(
             notes={"action": "diagrams_generated", "count": len(artifacts)},
             artifacts=artifacts,
-            status=Status.OK
+            status=Status.OK.value
         )
 
 
@@ -159,7 +159,7 @@ class QAArchitectAgent(Agent):
         return AgentOutput(
             notes={"action": "test_architecture_designed", "strategy": spec.test_strategy.model_dump()},
             artifacts=[test_plan_artifact],
-            status=Status.OK
+            status=Status.OK.value
         )
 
 
@@ -184,7 +184,7 @@ class RoadmapperAgent(Agent):
         return AgentOutput(
             notes={"action": "roadmap_generated", "milestones": []},
             artifacts=[roadmap_artifact],
-            status=Status.OK
+            status=Status.OK.value
         )
 
 
@@ -199,7 +199,7 @@ class CriticAgent(Agent):
         return AgentOutput(
             notes={"action": "review_completed", "issues_found": 0},
             artifacts=[],
-            status=Status.OK
+            status=Status.OK.value
         )
 
 
@@ -225,11 +225,11 @@ class PackagerAgent(Agent):
             return AgentOutput(
                 notes={"action": "bundle_created", "artifact_count": len(blackboard.artifacts)},
                 artifacts=[zip_artifact],
-                status=Status.OK
+                status=Status.OK.value
             )
         
         return AgentOutput(
             notes={"action": "packaging_skipped", "reason": "bundle_disabled"},
             artifacts=[],
-            status=Status.OK
+            status=Status.OK.value
         )
