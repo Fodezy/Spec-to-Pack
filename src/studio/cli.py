@@ -33,37 +33,89 @@ def main():
 
 
 @main.command()
-@click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
-def validate(spec_path: Path):
+@click.argument("spec_path", type=click.Path(path_type=Path))
+@click.pass_context
+def validate(ctx, spec_path: Path):
     """Validate a source spec against its JSON schema."""
+    from uuid import uuid4
+    from .audit import AuditLog
+    
+    # Create run context for audit logging
+    run_id = uuid4()
+    audit_log = AuditLog(spec_path.parent / "audit.jsonl")
+    
     click.echo(f"[VALIDATE] Validating spec: {spec_path}")
     
+    # Log validation start
+    audit_log.log_event("validation_start", run_id, f"Starting validation of {spec_path}")
+    
     try:
+        # Check if file exists
+        if not spec_path.exists():
+            error_msg = f"File not found: {spec_path}"
+            click.echo(f"ERROR: {error_msg}")
+            audit_log.log_event("validation_error", run_id, error_msg, {"error_type": "file_not_found"})
+            audit_log.save()
+            ctx.exit(2)
+        
         # Load spec from file
-        with open(spec_path) as f:
-            if spec_path.suffix.lower() in ['.yaml', '.yml']:
-                spec_data = yaml.safe_load(f)
-            else:
-                import json
-                spec_data = json.load(f)
+        try:
+            with open(spec_path) as f:
+                if spec_path.suffix.lower() in ['.yaml', '.yml']:
+                    spec_data = yaml.safe_load(f)
+                else:
+                    import json
+                    spec_data = json.load(f)
+        except Exception as e:
+            error_msg = f"Failed to parse file: {str(e)}"
+            click.echo(f"ERROR: {error_msg}")
+            audit_log.log_event("validation_error", run_id, error_msg, {"error_type": "parse_error"})
+            audit_log.save()
+            ctx.exit(2)
         
         # Create SourceSpec object
-        spec = SourceSpec(**spec_data)
+        try:
+            spec = SourceSpec(**spec_data)
+        except Exception as e:
+            error_msg = f"Invalid spec format: {str(e)}"
+            click.echo(f"ERROR: {error_msg}")
+            audit_log.log_event("validation_error", run_id, error_msg, {"error_type": "model_error"})
+            audit_log.save()
+            ctx.exit(2)
         
         # Validate using StudioApp
         result = controller.app.validate(spec)
         
         if result.ok:
             click.echo("PASS: Validation passed")
+            audit_log.log_event("validation_success", run_id, "Validation completed successfully")
+            audit_log.save()
+            # Success - exit code 0 is default
         else:
             click.echo("FAIL: Validation failed:")
+            error_details = []
             for error in result.errors:
-                click.echo(f"  {error.json_pointer}: {error.message}")
-            return 1
+                error_detail = f"{error.json_pointer}: {error.message}"
+                click.echo(f"  {error_detail}")
+                error_details.append(error_detail)
+            
+            error_msg = "Validation failed with schema errors"
+            audit_log.log_event("validation_failed", run_id, error_msg, {
+                "error_count": len(result.errors),
+                "errors": error_details
+            })
+            audit_log.save()
+            ctx.exit(2)
             
     except Exception as e:
-        click.echo(f"ERROR: Error validating spec: {str(e)}")
-        return 1
+        if isinstance(e, SystemExit):
+            raise  # Re-raise SystemExit from ctx.exit()
+        
+        error_msg = f"Unexpected error during validation: {str(e)}"
+        click.echo(f"ERROR: {error_msg}")
+        audit_log.log_event("validation_error", run_id, error_msg, {"error_type": "unexpected"})
+        audit_log.save()
+        ctx.exit(2)
 
 
 @main.command()
