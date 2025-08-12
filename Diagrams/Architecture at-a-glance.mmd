@@ -1,0 +1,17 @@
+flowchart LR
+  subgraph Local[Developer Machine]
+    CLI[studiogen CLI] --> ORCH[Orchestrator]
+    ORCH --> AGENTS[Content Agents]
+    ORCH --> TMPL[TemplateRenderer]
+    ORCH --> VALID[SchemaValidator]
+    ORCH --> FS[(Obsidian Vault / Filesystem)]
+    ORCH -.optional.-> VSTORE[(Vector Store)]
+    ORCH --> AUD[Audit Log (JSONL)]
+  end
+
+  FS -->|periodic| GIT[(Remote Git Repo)]
+  subgraph CI[GitHub Actions / CI]
+    CIJOB[Validate & E2E Jobs]
+  end
+
+  GIT <--> CIJOB

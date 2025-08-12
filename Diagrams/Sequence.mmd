@@ -1,0 +1,27 @@
+sequenceDiagram
+  participant U as User
+  participant CLI as CLI
+  participant OR as Orchestrator
+  participant SB as SpecBuilder
+  participant VA as SchemaValidator
+  participant AG as Content Agents
+  participant TR as TemplateRenderer
+  participant PK as Packager
+  participant FS as Filesystem
+  participant GT as Git Remote
+
+  U->>CLI: studiogen generate --idea --decisions
+  CLI->>OR: run(specInputs, dials)
+  OR->>SB: buildSpec(idea, decisions)
+  SB-->>OR: sourceSpec
+  OR->>VA: validate(sourceSpec, schema)
+  VA-->>OR: ok|errors
+  OR->>AG: produceContexts(sourceSpec)
+  AG-->>OR: sections, diagrams, roadmap
+  OR->>TR: render(templates, data)
+  TR-->>FS: write artifacts
+  OR->>PK: package(outputs)
+  PK-->>FS: zips + manifest
+  OR->>FS: git add/commit/push
+  FS-->>GT: update refs
+  OR-->>CLI: result(run_id, locations)

@@ -1,7 +1,10 @@
 """Spec builder - merge idea and decisions into a source spec."""
 
-from typing import Dict, Any, Optional
+import yaml
+from typing import Optional
 from pathlib import Path
+
+from .types import SourceSpec, Meta, Problem, Constraints, Dials, AudienceMode
 
 
 class SpecBuilder:
@@ -15,27 +18,35 @@ class SpecBuilder:
         self, 
         idea_path: Optional[Path] = None,
         decisions_path: Optional[Path] = None
-    ) -> Dict[str, Any]:
+    ) -> SourceSpec:
         """Merge idea and decisions into a source spec."""
-        spec = {
-            "meta": {
-                "name": "Sample Spec",
-                "version": "0.1.0"
-            },
-            "problem": {
-                "statement": "Placeholder problem statement"
-            },
-            "success_metrics": [
-                "Placeholder success metric"
-            ],
-            "constraints": {
-                "offline_ok": True
-            },
-            "decisions": {
-                "dials": {
-                    "research": False,
-                    "budget_tokens": 80000
-                }
-            }
+        # Load idea if provided
+        idea_data = {}
+        if idea_path and idea_path.exists():
+            with open(idea_path) as f:
+                idea_data = yaml.safe_load(f) or {}
+        
+        # Load decisions if provided  
+        decisions_data = {}
+        if decisions_path and decisions_path.exists():
+            with open(decisions_path) as f:
+                decisions_data = yaml.safe_load(f) or {}
+        
+        # Build spec from merged data
+        spec_data = {
+            "meta": Meta(
+                name=idea_data.get("name", "Generated Spec"),
+                version="0.1.0",
+                description=idea_data.get("description")
+            ),
+            "problem": Problem(
+                statement=idea_data.get("problem", "Placeholder problem statement"),
+                context=idea_data.get("context")
+            ),
+            "constraints": Constraints(
+                offline_ok=decisions_data.get("offline", True),
+                budget_tokens=decisions_data.get("budget_tokens", 80000)
+            )
         }
-        return spec
+        
+        return SourceSpec(**spec_data)

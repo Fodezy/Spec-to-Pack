@@ -1,0 +1,12 @@
+flowchart TD
+  A[Idea Card + Decision Sheet] --> B[SpecBuilder]
+  B --> C{Spec valid?}
+  C -- No --> E[Fail with pointers + exit code 2]
+  C -- Yes --> D[Orchestrator]
+  D -->|offline| G[Run agents (no network)]
+  D -->|--research| H[Run agents + Librarian (fetch, embed)]
+  G --> I[TemplateRenderer → files]
+  H --> I
+  I --> J[Packager → zips + manifest]
+  J --> K[git commit + push]
+  K --> L[CI validates contracts & E2E]
