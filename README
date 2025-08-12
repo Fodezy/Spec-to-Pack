@@ -1,7 +1,3 @@
-Here’s a solid `README.md` you can drop in the repo. If you want it shorter/longer or tailored to a specific tech stack, say the word and I’ll tweak it.
-
----
-
 # Spec-to-Pack Studio
 
 Generate high-quality engineering document **packs** from a structured product **spec**. Feed it an Idea + Decisions (or a Source Spec), and it will validate, orchestrate agents, render templates, and emit a consistent artifact set (e.g., PRD, Test Plan, diagrams, roadmaps) along with a machine-readable manifest.
