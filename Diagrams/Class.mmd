@@ -1,0 +1,235 @@
+classDiagram
+direction LR
+
+class CLIController {
+  +main(args): int
+}
+class ApiController {
+  +POST_generate(payload): RunInfo
+  +POST_validate(spec: SourceSpec): ValidationReport
+  +GET_runs(id): ArtifactIndex
+}
+class StudioApp {
+  +generate(spec: SourceSpec, pack: PackType): ArtifactIndex
+  +validate(spec: SourceSpec): ValidationResult
+  +package(index: ArtifactIndex): ZipArtifact
+}
+
+CLIController --> StudioApp : uses
+ApiController --> StudioApp : uses
+StudioApp --> Orchestrator : delegates
+
+class Orchestrator {
+  +run(ctx: RunContext, spec: SourceSpec, packs: PackType): ArtifactIndex
+  +stepBudget: int
+  +timeoutPerStepSec: int
+}
+class RunContext {
+  +runId: UUID
+  +offline: bool
+  +dials: Dials
+  +createdAt: datetime
+  +outDir: Path
+}
+class Dials {
+  +audienceMode: AudienceMode
+  +developmentFlow: DevelopmentFlow
+  +testDepth: TestDepth
+}
+
+Orchestrator *-- RunContext
+Orchestrator o-- Agent : "1..* agents"
+Orchestrator --> AuditLog : logs
+Orchestrator --> SchemaValidator : validates
+Orchestrator --> TemplateRenderer : renders
+Orchestrator --> LLMAdapter : model I/O
+Orchestrator --> VectorStoreAdapter : retrieval
+Orchestrator --> BrowserAdapter : (optional) research
+Orchestrator --> ArtifactIndex : produces
+
+class SourceSpec {
+  +meta: Meta
+  +problem: Problem
+  +constraints: Constraints
+  +success_metrics: SuccessMetrics
+  +diagram_scope: DiagramScope
+  +contracts_data: ContractsData
+  +test_strategy: TestStrategy
+  +operations: Operations
+  +export: Export
+  +isValid(): bool
+}
+class SchemaValidator {
+  +validate(spec: SourceSpec): ValidationResult
+}
+class ValidationResult {
+  +ok: bool
+  +errors: ValidationError[*]
+}
+class ValidationError {
+  +jsonPointer: string
+  +message: string
+}
+
+%% Agents (interface + concrete roles)
+class Agent {
+  <<interface>>
+  +name: string
+  +run(ctx: RunContext, spec: SourceSpec, bb: Blackboard): AgentOutput
+}
+class FramerAgent
+class LibrarianAgent
+class SlicerAgent
+class PRDWriterAgent
+class DiagrammerAgent
+class QAArchitectAgent
+class RoadmapperAgent
+class CriticAgent
+class PackagerAgent
+
+Agent <|-- FramerAgent
+Agent <|-- LibrarianAgent
+Agent <|-- SlicerAgent
+Agent <|-- PRDWriterAgent
+Agent <|-- DiagrammerAgent
+Agent <|-- QAArchitectAgent
+Agent <|-- RoadmapperAgent
+Agent <|-- CriticAgent
+Agent <|-- PackagerAgent
+
+FramerAgent ..> LLMAdapter : prompts
+LibrarianAgent ..> BrowserAdapter : fetch/extract
+LibrarianAgent ..> VectorStoreAdapter : search/rerank
+PRDWriterAgent ..> TemplateRenderer : render docs
+DiagrammerAgent ..> TemplateRenderer : render Mermaid
+QAArchitectAgent ..> TemplateRenderer : test plan
+RoadmapperAgent ..> TemplateRenderer : roadmap
+PackagerAgent ..> ArtifactIndex : bundle
+
+%% Shared blackboard + artifacts
+class Blackboard {
+  +artifacts: Artifact[*]
+  +notes: Map~string,any~
+  +addArtifact(a: Artifact): void
+  +getByPack(p: PackType): Artifact[*]
+}
+class Artifact {
+  <<abstract>>
+  +name: string
+  +path: Path
+  +pack: PackType
+  +purpose: string
+}
+class DocumentArtifact {
+  +format: "md"
+}
+class DiagramArtifact {
+  +format: "mmd"
+}
+class SchemaArtifact {
+  +format: "json"
+}
+class CIArtifact {
+  +format: "yml"
+}
+class ZipArtifact {
+  +format: "zip"
+}
+
+Artifact <|-- DocumentArtifact
+Artifact <|-- DiagramArtifact
+Artifact <|-- SchemaArtifact
+Artifact <|-- CIArtifact
+Artifact <|-- ZipArtifact
+
+class ArtifactIndex {
+  +runId: UUID
+  +artifacts: Artifact[*]
+  +add(a: Artifact): void
+  +toJson(): string
+}
+Blackboard --> ArtifactIndex : publishes
+
+%% Rendering & adapters
+class TemplateRenderer {
+  +render(t: Template, data: map): DocumentArtifact
+}
+class Template {
+  +path: Path
+  +type: TemplateType
+  +version: string
+}
+class TemplateType {
+  <<enumeration>>
+  MARKDOWN
+  JSON
+  YAML
+  MERMAID
+  YAML_SCHEMA
+  GHA_WORKFLOW
+}
+
+class LLMAdapter {
+  +generateJSON(prompt: string, schema: map): map
+  +summarize(text: string): string
+}
+class VectorStoreAdapter {
+  +index(id: string, emb: float[*]): void
+  +search(q: float[*], k: int): Result[*]
+}
+class BrowserAdapter {
+  +fetch(url: string): Html
+  +extract(html: Html): string
+}
+
+%% Events / audit
+class AuditLog {
+  +append(evt: PipelineEvent): void
+  +save(): Path
+}
+class PipelineEvent {
+  +eventType: string
+  +timestamp: datetime
+  +runId: UUID
+  +note: string
+  +details: map
+}
+
+%% Agent output & enums
+class AgentOutput {
+  +notes: map
+  +artifacts: Artifact[*]
+  +updatedSpec: SourceSpec
+  +status: Status
+}
+class Status {
+  <<enumeration>>
+  OK
+  RETRY
+  FAIL
+}
+class AudienceMode {
+  <<enumeration>>
+  BRIEF
+  BALANCED
+  DEEP
+}
+class DevelopmentFlow {
+  <<enumeration>>
+  AGILE
+  KANBAN
+  DUAL_TRACK
+  WATERFALL
+}
+class TestDepth {
+  <<enumeration>>
+  LIGHT
+  PYRAMID
+  FULL_MATRIX
+}
+class PackType {
+  <<enumeration>>
+  BALANCED
+  DEEP
+  BOTH
+}
