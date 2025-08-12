@@ -55,8 +55,10 @@ class SchemaValidator:
             spec_dict = spec.model_dump()
             jsonschema.validate(spec_dict, schema)
         except jsonschema.ValidationError as e:
+            # Build proper JSON pointer from absolute path
+            pointer = "/" + "/".join(str(part) for part in e.absolute_path) if e.absolute_path else "/"
             errors.append(ValidationError(
-                json_pointer=e.absolute_path or "/",
+                json_pointer=pointer,
                 message=str(e.message)
             ))
         except Exception as e:

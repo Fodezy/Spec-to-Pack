@@ -1,0 +1,8 @@
+{
+  "problem": { 
+    "statement": "This spec is missing the required 'meta' field" 
+  },
+  "success_metrics": {
+    "metrics": []
+  }
+}

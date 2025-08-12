@@ -1,0 +1,39 @@
+{
+  "meta": { 
+    "name": "Sample Feature", 
+    "version": "0.1.0" 
+  },
+  "problem": { 
+    "statement": "We need consistent packs from a single source spec." 
+  },
+  "success_metrics": {
+    "metrics": ["p95 render < 8s", "Deterministic reruns"]
+  },
+  "constraints": { 
+    "offline_ok": true, 
+    "budget_tokens": 80000 
+  },
+  "diagram_scope": {
+    "include_sequence": true,
+    "include_lifecycle": true,
+    "include_architecture": false
+  },
+  "contracts_data": {
+    "generate_schemas": false,
+    "api_specs": []
+  },
+  "test_strategy": {
+    "unit_tests": true,
+    "integration_tests": true,
+    "e2e_tests": false
+  },
+  "operations": {
+    "ci_cd": false,
+    "monitoring": false,
+    "logging": true
+  },
+  "export": {
+    "formats": ["markdown"],
+    "bundle": false
+  }
+}
