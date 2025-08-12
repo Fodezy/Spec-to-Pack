@@ -1,0 +1,82 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--unsafe']
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3.11
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: [-d, '{extends: default, rules: {line-length: {max: 120}}}']
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.1
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-PyYAML, pydantic]
+        args: [--ignore-missing-imports]
+
+  - repo: local
+    hooks:
+      - id: schema-validation
+        name: Validate JSON Schemas
+        entry: python -c "
+        import json, sys, jsonschema
+        for file in sys.argv[1:]:
+            if file.endswith('.schema.json'):
+                with open(file) as f:
+                    schema = json.load(f)
+                try:
+                    jsonschema.Draft202012Validator.check_schema(schema)
+                    print(f'✅ {file}')
+                except Exception as e:
+                    print(f'❌ {file}: {e}')
+                    sys.exit(1)
+        "
+        language: system
+        files: '\.schema\.json$'
+        pass_filenames: true
+
+      - id: template-syntax
+        name: Check Jinja2 Template Syntax
+        entry: python -c "
+        import sys, jinja2
+        for file in sys.argv[1:]:
+            if file.endswith('.j2'):
+                with open(file) as f:
+                    try:
+                        jinja2.Template(f.read(), undefined=jinja2.StrictUndefined)
+                        print(f'✅ {file}')
+                    except Exception as e:
+                        print(f'❌ {file}: {e}')
+                        sys.exit(1)
+        "
+        language: system
+        files: '\.j2$'
+        pass_filenames: true
