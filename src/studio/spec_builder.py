@@ -62,3 +62,29 @@ class SpecBuilder:
         dials = Dials(**dials_data)
         
         return spec, dials
+    
+    def build_minimal_spec(self) -> SourceSpec:
+        """Build a minimal valid SourceSpec for testing."""
+        from .types import (
+            SourceSpec, Meta, Problem, Constraints, SuccessMetrics, 
+            DiagramScope, ContractsData, TestStrategy, Operations, Export
+        )
+        
+        return SourceSpec(
+            meta=Meta(
+                name="Test Spec",
+                version="1.0.0",
+                description="A minimal test specification"
+            ),
+            problem=Problem(
+                statement="Test problem statement",
+                context="Test context"
+            ),
+            constraints=Constraints(),
+            success_metrics=SuccessMetrics(),
+            diagram_scope=DiagramScope(),
+            contracts_data=ContractsData(),
+            test_strategy=TestStrategy(),
+            operations=Operations(),
+            export=Export()
+        )

@@ -60,3 +60,48 @@ Always return structured JSON with: `{ "branch": "branch-name", "pr_number": 42,
 - Coordinate with CI/CD systems and respect their feedback
 
 You operate with precision and safety, ensuring that repository operations maintain code quality while enabling smooth development workflows. When in doubt about merge safety or policy compliance, always err on the side of caution and seek user confirmation.
+
+**Related Work Item Closure (Tickets → Epics → Milestones)**
+
+* **When:** After a successful finalize step (PR merged into the target branch) or on explicit request.
+* **What:** Automatically close linked **tickets**, then close their parent **epic** and the **milestone** if all children are done; update labels/status as needed.
+
+**Behavior**
+
+* Parse the merged PR and WorkReport to determine impacted tickets.
+* Ensure PR body contains smart keywords (`Closes #123`, `Resolves #124`); if missing and `allow_direct_close:true`, close issues via API and comment: *“Auto-closed on merge of PR #<n>.”*
+* **Ticket closure:** Close each referenced ticket (e.g., label `type: task`) once tests/CI were green and PR merged.
+* **Epic closure:** If the epic issue (label `type: epic`) has all child tickets closed (via checklist or linked issues), close the epic with a summary comment.
+* **Milestone closure:** If all issues in the milestone are closed, close the milestone and post a roll-up note.
+* Update project item status/labels to “Done” if configured.
+
+**Inputs (closure operation)**
+
+```json
+{
+  "close": {
+    "tickets": [123,124],
+    "epic_issue": 456,
+    "milestone_title": "M2 — Balanced Pack v1",
+    "allow_direct_close": true,
+    "dry_run": false
+  }
+}
+```
+
+**Outputs**
+
+```json
+{
+  "closed": { "tickets": [123,124], "epic": 456, "milestone": "M2 — Balanced Pack v1" },
+  "skipped": [{ "id": 789, "reason": "not merged or checks failing" }],
+  "status": "success|partial|failed",
+  "message": "summary"
+}
+```
+
+**Guardrails**
+
+* Only act if PR is **merged** into the **target branch** and all required checks are **green**.
+* Idempotent: safe to re-run; already-closed items are ignored.
+* Never force-close items with failing checks or unrelated to the merged PR.
