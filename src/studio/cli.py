@@ -47,14 +47,17 @@ def validate(ctx, spec_path: Path):
     click.echo(f"[VALIDATE] Validating spec: {spec_path}")
     
     # Log validation start
-    audit_log.log_event("validation_start", run_id, f"Starting validation of {spec_path}")
+    audit_log.log_event("validation_start", run_id, f"Starting validation of {spec_path}",
+                       stage="validation", event="start")
     
     try:
         # Check if file exists
         if not spec_path.exists():
             error_msg = f"File not found: {spec_path}"
             click.echo(f"ERROR: {error_msg}")
-            audit_log.log_event("validation_error", run_id, error_msg, {"error_type": "file_not_found"})
+            audit_log.log_event("validation_error", run_id, error_msg, 
+                               details={"error_type": "file_not_found"},
+                               stage="validation", event="error", level="error")
             audit_log.save()
             ctx.exit(2)
         
@@ -69,7 +72,9 @@ def validate(ctx, spec_path: Path):
         except Exception as e:
             error_msg = f"Failed to parse file: {str(e)}"
             click.echo(f"ERROR: {error_msg}")
-            audit_log.log_event("validation_error", run_id, error_msg, {"error_type": "parse_error"})
+            audit_log.log_event("validation_error", run_id, error_msg, 
+                               details={"error_type": "parse_error"},
+                               stage="validation", event="error", level="error")
             audit_log.save()
             ctx.exit(2)
         
@@ -79,7 +84,9 @@ def validate(ctx, spec_path: Path):
         except Exception as e:
             error_msg = f"Invalid spec format: {str(e)}"
             click.echo(f"ERROR: {error_msg}")
-            audit_log.log_event("validation_error", run_id, error_msg, {"error_type": "model_error"})
+            audit_log.log_event("validation_error", run_id, error_msg, 
+                               details={"error_type": "model_error"}, 
+                               stage="validation", event="error", level="error")
             audit_log.save()
             ctx.exit(2)
         
@@ -88,7 +95,8 @@ def validate(ctx, spec_path: Path):
         
         if result.ok:
             click.echo("PASS: Validation passed")
-            audit_log.log_event("validation_success", run_id, "Validation completed successfully")
+            audit_log.log_event("validation_success", run_id, "Validation completed successfully",
+                               stage="validation", event="success")
             audit_log.save()
             # Success - exit code 0 is default
         else:

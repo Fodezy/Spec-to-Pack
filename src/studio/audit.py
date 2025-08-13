@@ -28,14 +28,22 @@ class AuditLog:
         event_type: str, 
         run_id: UUID, 
         note: str, 
-        details: dict = None
+        details: dict = None,
+        stage: str = "unknown",
+        event: str = "",
+        duration_ms: Optional[int] = None,
+        level: str = "info"
     ) -> None:
         """Log an event with current timestamp."""
         event = PipelineEvent(
             event_type=event_type,
             timestamp=datetime.utcnow(),
             run_id=run_id,
+            stage=stage,
+            event=event,
             note=note,
+            duration_ms=duration_ms,
+            level=level,
             details=details or {}
         )
         self.append(event)

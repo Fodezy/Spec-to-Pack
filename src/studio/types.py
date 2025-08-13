@@ -171,7 +171,11 @@ class PipelineEvent(BaseModel):
     event_type: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     run_id: UUID
+    stage: str = "unknown"
+    event: str = ""
     note: str
+    duration_ms: Optional[int] = None
+    level: str = "info"
     details: Dict[str, Any] = Field(default_factory=dict)
 
 
