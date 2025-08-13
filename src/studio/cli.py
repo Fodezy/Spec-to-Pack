@@ -163,16 +163,20 @@ def generate(
         
         # Convert string arguments to enums
         pack_type = PackType(pack)
-        dials = Dials(audience_mode=AudienceMode(audience))
         
-        # Generate using StudioApp
+        # Only create CLI dials if no decision files provided
+        cli_dials = None
+        if not decisions:
+            cli_dials = Dials(audience_mode=AudienceMode(audience))
+        
+        # Generate using StudioApp (will use file-based dials if available)
         artifact_index = controller.app.generate_from_files(
             idea_path=idea,
             decisions_path=decisions,
             pack=pack_type,
             out_dir=out,
             offline=offline,
-            dials=dials
+            dials=cli_dials
         )
         
         click.echo("[SUCCESS] Generation completed")

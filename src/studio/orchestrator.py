@@ -257,6 +257,53 @@ class Orchestrator:
     
     def _render_balanced_pack(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> None:
         """Render balanced pack templates."""
-        # Stub implementation for template rendering
-        # TODO: Integrate with TemplateRenderer when implemented
-        pass
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump(),
+            "problem": spec.problem.model_dump(),
+            "constraints": spec.constraints.model_dump(),
+            "success_metrics": spec.success_metrics.model_dump(),
+            "diagram_scope": spec.diagram_scope.model_dump(),
+            "contracts_data": spec.contracts_data.model_dump(),
+            "test_strategy": spec.test_strategy.model_dump(),
+            "operations": spec.operations.model_dump(),
+            "export": spec.export.model_dump(),
+            "dials": ctx.dials.model_dump(),
+            "pack_type": "balanced",
+            "run_id": str(ctx.run_id),
+            "generated_at": ctx.created_at.isoformat()
+        }
+        
+        # Render brief.md template
+        try:
+            from .types import Template, TemplateType
+            brief_template = Template(
+                path=self.template_renderer.template_dir / "balanced" / "brief.md",
+                type=TemplateType.MARKDOWN
+            )
+            
+            # Use render_string for now since we need to write content to file
+            with open(brief_template.path) as f:
+                template_content = f.read()
+            
+            rendered_content = self.template_renderer.render_string(template_content, template_data)
+            
+            # Write to output directory
+            output_file = ctx.out_dir / "brief.md"
+            ctx.out_dir.mkdir(parents=True, exist_ok=True)
+            with open(output_file, 'w') as f:
+                f.write(rendered_content)
+            
+            # Create artifact and add to blackboard
+            from .artifacts import DocumentArtifact
+            artifact = DocumentArtifact(
+                name="brief",
+                path=output_file,
+                pack="balanced",
+                purpose="Project brief document"
+            )
+            blackboard.add_artifact(artifact)
+            
+        except Exception as e:
+            # Template rendering is non-critical in stub phase
+            print(f"Warning: Failed to render brief.md: {e}")
