@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from .types import PackType
+from .templates.template_version import get_template_set_version, get_template_commit
 
 
 class Artifact(BaseModel, ABC):
@@ -49,8 +50,8 @@ class ArtifactIndex(BaseModel):
     """Index of all generated artifacts."""
     run_id: UUID
     generated_at: str
-    template_set: str = "balanced-1.0.0"
-    template_commit: str = "main"
+    template_set: str = Field(default_factory=lambda: get_template_set_version())
+    template_commit: str = Field(default_factory=get_template_commit)
     artifacts: List[Artifact] = Field(default_factory=list)
     
     def add(self, artifact: Artifact) -> None:
@@ -79,14 +80,16 @@ class Blackboard(BaseModel):
         """Get artifacts by pack type."""
         return [a for a in self.artifacts if a.pack == pack]
     
-    def publish(self) -> ArtifactIndex:
+    def publish(self, pack_type: str = "balanced") -> ArtifactIndex:
         """Publish artifacts to an index."""
         from uuid import uuid4
         from datetime import datetime
         
         index = ArtifactIndex(
             run_id=uuid4(),
-            generated_at=datetime.utcnow().isoformat() + "Z"
+            generated_at=datetime.utcnow().isoformat() + "Z",
+            template_set=get_template_set_version(pack_type),
+            template_commit=get_template_commit()
         )
         
         for artifact in self.artifacts:

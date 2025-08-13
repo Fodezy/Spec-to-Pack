@@ -66,6 +66,13 @@ jobs:
     - name: Run contract tests
       run: pytest tests/contract/ -v
     
+    - name: Run template tests
+      run: |
+        echo "Running template harness tests..."
+        pytest tests/test_template_harness.py -v
+        echo "Running template golden tests..."
+        pytest tests/test_template_golden.py -v
+    
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
       uses: codecov/codecov-action@v3
