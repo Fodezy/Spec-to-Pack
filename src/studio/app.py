@@ -67,7 +67,11 @@ class StudioApp:
     ) -> ArtifactIndex:
         """Generate a document pack from idea and decision files."""
         # Build spec from files
-        spec = self.spec_builder.merge_idea_decisions(idea_path, decisions_path)
+        spec, file_dials = self.spec_builder.merge_idea_decisions(idea_path, decisions_path)
+        
+        # Use dials from files if not provided
+        if dials is None:
+            dials = file_dials
         
         # Generate pack
         return self.generate(spec, pack, out_dir, offline, dials)

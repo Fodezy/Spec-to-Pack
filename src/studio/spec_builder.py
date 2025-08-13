@@ -1,10 +1,10 @@
 """Spec builder - merge idea and decisions into a source spec."""
 
 import yaml
-from typing import Optional
+from typing import Optional, Tuple
 from pathlib import Path
 
-from .types import SourceSpec, Meta, Problem, Constraints, Dials, AudienceMode
+from .types import SourceSpec, Meta, Problem, Constraints, Dials, AudienceMode, DevelopmentFlow, TestDepth
 
 
 class SpecBuilder:
@@ -18,8 +18,8 @@ class SpecBuilder:
         self, 
         idea_path: Optional[Path] = None,
         decisions_path: Optional[Path] = None
-    ) -> SourceSpec:
-        """Merge idea and decisions into a source spec."""
+    ) -> Tuple[SourceSpec, Dials]:
+        """Merge idea and decisions into a source spec and dials."""
         # Load idea if provided
         idea_data = {}
         if idea_path and idea_path.exists():
@@ -31,6 +31,15 @@ class SpecBuilder:
         if decisions_path and decisions_path.exists():
             with open(decisions_path) as f:
                 decisions_data = yaml.safe_load(f) or {}
+        
+        # Map decision data to Dials
+        dials_data = {}
+        if "audience_mode" in decisions_data:
+            dials_data["audience_mode"] = AudienceMode(decisions_data["audience_mode"])
+        if "development_flow" in decisions_data:
+            dials_data["development_flow"] = DevelopmentFlow(decisions_data["development_flow"])
+        if "test_depth" in decisions_data:
+            dials_data["test_depth"] = TestDepth(decisions_data["test_depth"])
         
         # Build spec from merged data
         spec_data = {
@@ -49,4 +58,7 @@ class SpecBuilder:
             )
         }
         
-        return SourceSpec(**spec_data)
+        spec = SourceSpec(**spec_data)
+        dials = Dials(**dials_data)
+        
+        return spec, dials

@@ -16,11 +16,15 @@ def test_spec_builder_init():
 def test_merge_idea_decisions_no_files():
     """Test merging with no input files."""
     builder = SpecBuilder()
-    spec = builder.merge_idea_decisions()
+    spec, dials = builder.merge_idea_decisions()
     
     assert isinstance(spec, SourceSpec)
     assert spec.meta.name == "Generated Spec"
     assert spec.problem.statement == "Placeholder problem statement"
+    
+    # Verify default dials
+    from studio.types import Dials
+    assert isinstance(dials, Dials)
 
 
 def test_merge_idea_decisions_with_files(tmp_path):
@@ -38,7 +42,10 @@ def test_merge_idea_decisions_with_files(tmp_path):
     # Create decisions file
     decisions_data = {
         "offline": False,
-        "budget_tokens": 50000
+        "budget_tokens": 50000,
+        "audience_mode": "deep",
+        "development_flow": "kanban",
+        "test_depth": "full_matrix"
     }
     decisions_file = tmp_path / "decisions.yaml"
     with open(decisions_file, 'w') as f:
@@ -46,7 +53,7 @@ def test_merge_idea_decisions_with_files(tmp_path):
     
     # Merge files
     builder = SpecBuilder()
-    spec = builder.merge_idea_decisions(idea_file, decisions_file)
+    spec, dials = builder.merge_idea_decisions(idea_file, decisions_file)
     
     assert isinstance(spec, SourceSpec)
     assert spec.meta.name == "Test Feature"
@@ -54,6 +61,13 @@ def test_merge_idea_decisions_with_files(tmp_path):
     assert spec.problem.statement == "Users need to test things"
     assert spec.constraints.offline_ok == False
     assert spec.constraints.budget_tokens == 50000
+    
+    # Verify Dials mapping from decisions
+    from studio.types import Dials
+    assert isinstance(dials, Dials)
+    assert dials.audience_mode.value == "deep"
+    assert dials.development_flow.value == "kanban"
+    assert dials.test_depth.value == "full_matrix"
 
 
 def test_merge_with_missing_files(tmp_path):
@@ -61,8 +75,11 @@ def test_merge_with_missing_files(tmp_path):
     nonexistent_file = tmp_path / "missing.yaml"
     
     builder = SpecBuilder()
-    spec = builder.merge_idea_decisions(nonexistent_file, nonexistent_file)
+    spec, dials = builder.merge_idea_decisions(nonexistent_file, nonexistent_file)
     
     # Should use defaults when files don't exist
     assert isinstance(spec, SourceSpec)
     assert spec.meta.name == "Generated Spec"
+    
+    from studio.types import Dials
+    assert isinstance(dials, Dials)

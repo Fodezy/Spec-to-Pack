@@ -28,11 +28,55 @@ class FramerAgent(Agent):
     
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Frame the spec by filling missing mandatory fields."""
-        # Stub implementation
+        filled_fields = []
+        overrides = []
+        
+        # Create a mutable copy of the spec data
+        spec_dict = spec.model_dump()
+        
+        # Check and fill missing meta fields
+        if not spec_dict.get("meta", {}).get("description"):
+            spec_dict["meta"]["description"] = "Generated description - needs manual review"
+            filled_fields.append("meta.description")
+        
+        # Check and fill missing problem context
+        if not spec_dict.get("problem", {}).get("context"):
+            spec_dict["problem"]["context"] = "Generated context - needs manual review"
+            filled_fields.append("problem.context")
+        
+        # Check success metrics - ensure it has meaningful content
+        success_metrics = spec_dict.get("success_metrics", {})
+        if not success_metrics.get("metrics") or success_metrics.get("metrics") == []:
+            spec_dict["success_metrics"]["metrics"] = ["User satisfaction > 80%", "Performance meets SLA"]
+            filled_fields.append("success_metrics.metrics")
+            overrides.append({
+                "field": "success_metrics.metrics",
+                "reason": "Empty metrics list replaced with default business metrics"
+            })
+        
+        # Create updated spec from modified dict
+        try:
+            from ..types import SourceSpec
+            updated_spec = SourceSpec(**spec_dict)
+        except Exception as e:
+            # If validation fails, return original spec
+            updated_spec = spec
+            overrides.append({
+                "field": "validation",
+                "reason": f"Failed to apply changes: {str(e)}"
+            })
+        
+        notes = {
+            "action": "framed_spec",
+            "filled_fields": filled_fields,
+            "overrides": overrides,
+            "total_changes": len(filled_fields)
+        }
+        
         return AgentOutput(
-            notes={"action": "framed_spec", "filled_fields": []},
+            notes=notes,
             artifacts=[],
-            updated_spec=spec,
+            updated_spec=updated_spec,
             status=Status.OK.value
         )
 

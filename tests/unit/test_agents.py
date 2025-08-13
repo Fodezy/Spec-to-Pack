@@ -46,7 +46,17 @@ def test_framer_agent(run_context, source_spec, blackboard):
     
     assert result.status == Status.OK.value
     assert "framed_spec" in result.notes["action"]
-    assert result.updated_spec == source_spec  # Should return the same spec in stub
+    
+    # Verify that fields were filled
+    assert "filled_fields" in result.notes
+    assert "overrides" in result.notes
+    assert result.updated_spec is not None
+    
+    # Check that missing fields were filled
+    if not source_spec.meta.description:
+        assert result.updated_spec.meta.description == "Generated description - needs manual review"
+    if not source_spec.problem.context:
+        assert result.updated_spec.problem.context == "Generated context - needs manual review"
 
 
 def test_prd_writer_agent(run_context, source_spec, blackboard):
