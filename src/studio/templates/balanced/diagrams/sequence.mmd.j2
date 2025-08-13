@@ -1,0 +1,48 @@
+%% Sequence Diagram for {{ meta.name }}
+%% Generated: {{ generated_at }}
+%% Template: balanced-1.0.0
+
+sequenceDiagram
+    participant User
+    participant System
+    participant API
+    participant Database
+    
+    {% if diagram_scope.get('user_flows') %}
+    %% User flows from spec
+    {% for flow in diagram_scope.user_flows %}
+    Note over User,Database: {{ flow }} Flow
+    User->>+System: Initiate {{ flow }}
+    System->>+API: Validate request
+    API-->>-System: Validation result
+    
+    alt Validation Success
+        System->>+Database: Query/Update data
+        Database-->>-System: Data response
+        System-->>User: {{ flow }} successful
+    else Validation Failure
+        System-->>User: Error: Invalid request
+    end
+    {% endfor %}
+    {% else %}
+    %% Default interaction flow
+    Note over User,Database: Core System Interaction
+    
+    User->>+System: Send request
+    System->>+API: Process request
+    API->>+Database: Query data
+    Database-->>-API: Return data
+    API-->>-System: Processed response
+    System-->>-User: Final response
+    {% endif %}
+    
+    %% Error handling
+    Note over User,Database: Error Handling
+    User->>+System: Invalid request
+    System->>System: Validate input
+    System-->>User: Error response
+    
+    %% Performance monitoring
+    Note over System,API: Performance Tracking
+    System->>API: Log request metrics
+    API->>API: Track response time

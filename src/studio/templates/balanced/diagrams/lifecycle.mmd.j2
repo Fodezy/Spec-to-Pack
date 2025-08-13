@@ -1,0 +1,43 @@
+%% Lifecycle Diagram for {{ meta.name }}
+%% Generated: {{ generated_at }}
+%% Template: balanced-1.0.0
+
+graph TD
+    A[Start] --> B{Initialize System}
+    B -->|Success| C[Ready State]
+    B -->|Failure| E[Error State]
+    
+    C --> D{Process Request}
+    D -->|Valid| F[Process Data]
+    D -->|Invalid| G[Validation Error]
+    
+    F --> H{Execute Operation}
+    H -->|Success| I[Success Response]
+    H -->|Failure| J[Operation Error]
+    
+    I --> K[Log Success]
+    J --> L[Log Error]
+    G --> L
+    E --> L
+    
+    K --> M[Complete]
+    L --> N[Handle Error]
+    N --> M
+    
+    %% Style classes
+    classDef startEnd fill:#90EE90,stroke:#006400,stroke-width:2px
+    classDef process fill:#ADD8E6,stroke:#4682B4,stroke-width:2px
+    classDef decision fill:#FFE4B5,stroke:#DAA520,stroke-width:2px
+    classDef error fill:#FFB6C1,stroke:#DC143C,stroke-width:2px
+    
+    class A,M startEnd
+    class C,F,I,K process
+    class B,D,H decision
+    class E,G,J,L,N error
+
+%% State descriptions
+%% Start: System initialization
+%% Ready State: System ready to process requests
+%% Process Request: Validate and route incoming requests
+%% Execute Operation: Core business logic execution
+%% Success/Error paths: Handle outcomes appropriately
