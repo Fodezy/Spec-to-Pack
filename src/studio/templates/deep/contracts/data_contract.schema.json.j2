@@ -1,0 +1,496 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://{{ meta.name | lower }}.com/schemas/data-contract.json",
+  "title": "{{ meta.name }} Data Contract Schema",
+  "description": "Contract definition for {{ meta.name }} data structures and transformations",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of the data contract"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name of the data contract"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when contract was generated"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Team or individual responsible for this data contract"
+        }
+      },
+      "required": ["version", "name", "generated_at", "owner"],
+      "additionalProperties": false
+    },
+    "datasets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dataset"
+      },
+      "description": "Data sets defined in this contract"
+    },
+    "transformations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/transformation"
+      },
+      "description": "Data transformation rules"
+    },
+    "data_quality": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/quality_rule"
+          }
+        },
+        "monitoring": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "frequency": {
+              "type": "string",
+              "enum": ["continuous", "hourly", "daily", "weekly"],
+              "default": "daily"
+            },
+            "alerts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/alert_rule"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["rules"],
+      "additionalProperties": false
+    },
+    "privacy": {
+      "type": "object",
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": ["public", "internal", "confidential", "restricted"],
+          "description": "Data classification level"
+        },
+        "pii_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fields containing personally identifiable information"
+        },
+        "retention": {
+          "type": "object",
+          "properties": {
+            "period": {
+              "type": "string",
+              "pattern": "^P(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+              "description": "ISO 8601 duration for data retention"
+            },
+            "policy": {
+              "type": "string",
+              "description": "Retention policy description"
+            }
+          },
+          "required": ["period"],
+          "additionalProperties": false
+        },
+        "compliance": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["GDPR", "CCPA", "HIPAA", "SOX", "PCI_DSS"]
+          },
+          "description": "Applicable compliance frameworks"
+        }
+      },
+      "required": ["classification"],
+      "additionalProperties": false
+    },
+    "sla": {
+      "type": "object",
+      "properties": {
+        "availability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Availability percentage (e.g., 99.9)"
+        },
+        "latency": {
+          "type": "object",
+          "properties": {
+            "p50": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s|m)$",
+              "description": "50th percentile latency"
+            },
+            "p90": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s|m)$",
+              "description": "90th percentile latency"
+            },
+            "p99": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s|m)$",
+              "description": "99th percentile latency"
+            }
+          },
+          "additionalProperties": false
+        },
+        "freshness": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(ms|s|m|h|d)$",
+          "description": "Maximum data age tolerance"
+        },
+        "completeness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Expected data completeness percentage"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["meta", "datasets", "privacy"],
+  "additionalProperties": false,
+  "$defs": {
+    "dataset": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Dataset identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["database", "api", "file", "stream", "external"]
+            },
+            "location": {
+              "type": "string",
+              "description": "Source location (URL, table name, etc.)"
+            },
+            "format": {
+              "type": "string",
+              "enum": ["json", "csv", "parquet", "avro", "xml", "sql"],
+              "description": "Data format"
+            }
+          },
+          "required": ["type", "location"],
+          "additionalProperties": false
+        },
+        "schema": {
+          "$ref": "#/$defs/schema_definition"
+        },
+        "partitioning": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "keys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "strategy": {
+              "type": "string",
+              "enum": ["time", "hash", "range", "list"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "access_patterns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/access_pattern"
+          }
+        }
+      },
+      "required": ["name", "description", "source", "schema"],
+      "additionalProperties": false
+    },
+    "schema_definition": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field_definition"
+          }
+        },
+        "primary_key": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/index_definition"
+          }
+        }
+      },
+      "required": ["fields"],
+      "additionalProperties": false
+    },
+    "field_definition": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string", "integer", "number", "boolean", "date", "datetime", 
+            "timestamp", "uuid", "json", "array", "object", "binary"
+          ]
+        },
+        "nullable": {
+          "type": "boolean",
+          "default": true
+        },
+        "description": {
+          "type": "string"
+        },
+        "constraints": {
+          "type": "object",
+          "properties": {
+            "min_length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pattern": {
+              "type": "string",
+              "format": "regex"
+            },
+            "enum": {
+              "type": "array"
+            },
+            "minimum": {
+              "type": "number"
+            },
+            "maximum": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "pii": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether field contains PII"
+        },
+        "sensitive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether field contains sensitive data"
+        }
+      },
+      "required": ["name", "type"],
+      "additionalProperties": false
+    },
+    "index_definition": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unique": {
+          "type": "boolean",
+          "default": false
+        },
+        "type": {
+          "type": "string",
+          "enum": ["btree", "hash", "gin", "gist", "spgist", "brin"]
+        }
+      },
+      "required": ["name", "fields"],
+      "additionalProperties": false
+    },
+    "access_pattern": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "query_type": {
+          "type": "string",
+          "enum": ["select", "insert", "update", "delete", "aggregate"]
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "batch"]
+        },
+        "fields_accessed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "filter_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["name", "query_type", "frequency"],
+      "additionalProperties": false
+    },
+    "transformation": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "source_datasets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_dataset": {
+          "type": "string"
+        },
+        "transformation_type": {
+          "type": "string",
+          "enum": ["etl", "elt", "streaming", "batch", "real_time"]
+        },
+        "logic": {
+          "type": "string",
+          "description": "Transformation logic description or SQL"
+        },
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "frequency": {
+              "type": "string",
+              "enum": ["continuous", "hourly", "daily", "weekly", "monthly"]
+            },
+            "cron": {
+              "type": "string",
+              "description": "Cron expression for scheduling"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["name", "source_datasets", "target_dataset", "transformation_type"],
+      "additionalProperties": false
+    },
+    "quality_rule": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["completeness", "uniqueness", "validity", "consistency", "accuracy"]
+        },
+        "field": {
+          "type": "string",
+          "description": "Field this rule applies to"
+        },
+        "condition": {
+          "type": "string",
+          "description": "Rule condition (SQL expression)"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Acceptable threshold percentage"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "default": "medium"
+        }
+      },
+      "required": ["name", "type", "condition", "threshold"],
+      "additionalProperties": false
+    },
+    "alert_rule": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "condition": {
+          "type": "string",
+          "description": "Alert trigger condition"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error", "critical"]
+        },
+        "notification": {
+          "type": "object",
+          "properties": {
+            "channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["email", "slack", "pager", "webhook"]
+              }
+            },
+            "recipients": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["name", "condition", "severity"],
+      "additionalProperties": false
+    }
+  }
+}

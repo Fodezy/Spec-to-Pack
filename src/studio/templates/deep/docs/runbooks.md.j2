@@ -1,0 +1,418 @@
+# Operational Runbooks: {{ meta.name }}
+
+**Version:** {{ meta.version }}
+**Generated:** {{ generated_at }}
+**Template:** deep-1.0.0
+
+## Overview
+
+This document contains operational procedures and troubleshooting guides for {{ meta.name }}.
+
+{{ problem.statement }}
+
+## Emergency Contacts
+
+### On-Call Rotation
+- **Primary**: [On-call engineer phone/email]
+- **Secondary**: [Backup engineer phone/email]
+- **Escalation**: [Engineering manager phone/email]
+- **Executive**: [Director/VP phone/email]
+
+### External Contacts
+- **Cloud Provider Support**: [Support case URL/phone]
+- **Critical Vendor Support**: [Vendor contact info]
+- **Security Team**: [Security incident contact]
+
+## System Architecture Quick Reference
+
+### Key Components
+{% if constraints.technical.architecture %}
+{{ constraints.technical.architecture }}
+{% else %}
+- **Frontend**: Web application (React/Vue/Angular)
+- **API Gateway**: Request routing and authentication
+- **Backend Services**: Core business logic
+- **Database**: Primary data storage
+- **Cache Layer**: Redis/Memcached
+- **Message Queue**: Async processing
+- **File Storage**: Static assets and uploads
+{% endif %}
+
+### Critical Dependencies
+- Authentication provider
+- Payment processor
+- Email service
+- Third-party APIs
+- CDN provider
+
+## Runbook Index
+
+### Service Health Checks
+1. [System Status Check](#system-status-check)
+2. [Database Health](#database-health)
+3. [External Dependencies](#external-dependencies)
+4. [Performance Baseline](#performance-baseline)
+
+### Common Issues
+5. [High Response Times](#high-response-times)
+6. [Error Rate Spike](#error-rate-spike)
+7. [Service Unavailable](#service-unavailable)
+8. [Database Connection Issues](#database-connection-issues)
+9. [Authentication Failures](#authentication-failures)
+10. [Payment Processing Issues](#payment-processing-issues)
+
+### Infrastructure Issues
+11. [Server Resource Exhaustion](#server-resource-exhaustion)
+12. [Deployment Failures](#deployment-failures)
+13. [SSL Certificate Issues](#ssl-certificate-issues)
+14. [DNS Resolution Problems](#dns-resolution-problems)
+
+### Security Incidents
+15. [Security Breach Response](#security-breach-response)
+16. [DDoS Attack Mitigation](#ddos-attack-mitigation)
+17. [Data Breach Protocol](#data-breach-protocol)
+
+---
+
+## Runbook Procedures
+
+### System Status Check
+**When to use**: Regular health checks, incident response
+
+**Steps**:
+1. Check monitoring dashboard
+2. Verify API endpoints
+   ```bash
+   curl -H "Accept: application/json" https://api.{{ meta.name | lower }}.com/health
+   ```
+3. Check database connectivity
+4. Verify external service status
+5. Review recent logs for errors
+
+**Expected Results**: All services responding normally
+
+**Escalation**: If any component is down, proceed to specific runbook
+
+---
+
+### Database Health
+**When to use**: Database performance issues, connection problems
+
+**Symptoms**:
+- Slow database queries
+- Connection timeouts
+- High database CPU/memory
+
+**Investigation**:
+```sql
+-- Check active connections
+SELECT * FROM pg_stat_activity WHERE state = 'active';
+
+-- Check slow queries
+SELECT query, mean_exec_time, calls 
+FROM pg_stat_statements 
+ORDER BY mean_exec_time DESC 
+LIMIT 10;
+
+-- Check database size
+SELECT pg_size_pretty(pg_database_size('{{ meta.name | lower }}'));
+```
+
+**Resolution**:
+1. Kill long-running queries if necessary
+2. Check for missing indexes
+3. Consider connection pool adjustment
+4. Monitor for improvement
+
+**Escalation**: DBA team if issues persist > 15 minutes
+
+---
+
+### High Response Times
+**When to use**: API latency > 2 seconds p90
+
+**Investigation Steps**:
+1. Check APM dashboard for slow endpoints
+2. Review recent deployments
+3. Check database query performance
+4. Verify external service response times
+5. Review server resource utilization
+
+**Common Causes**:
+- Database query performance
+- External API slowness
+- Memory leaks
+- Traffic spikes
+- Inefficient code paths
+
+**Resolution**:
+1. Scale horizontally if traffic spike
+2. Optimize slow database queries
+3. Restart services if memory leak suspected
+4. Enable caching for frequently accessed data
+5. Implement circuit breakers for external calls
+
+---
+
+### Error Rate Spike
+**When to use**: Error rate > 2% for 5+ minutes
+
+**Investigation**:
+1. Check error logs for patterns
+   ```bash
+   grep -i error /var/log/{{ meta.name | lower }}/app.log | tail -100
+   ```
+2. Identify most common error types
+3. Check for recent deployments
+4. Verify external service status
+5. Review monitoring for correlating events
+
+**Common Errors**:
+- 500: Internal server errors
+- 502/503: Service unavailable
+- 400: Bad request (client errors)
+- 401/403: Authentication issues
+
+**Resolution**:
+1. If deployment-related: Consider rollback
+2. If external service: Implement fallbacks
+3. If authentication: Check auth provider status
+4. If database: Follow database health runbook
+
+---
+
+### Service Unavailable
+**When to use**: Complete service outage
+
+**Immediate Actions** (< 5 minutes):
+1. Check if planned maintenance
+2. Verify DNS resolution
+3. Check load balancer status
+4. Confirm server/container health
+5. Review recent changes
+
+**Investigation**:
+```bash
+# Check service status
+systemctl status {{ meta.name | lower }}-api
+kubectl get pods -n {{ meta.name | lower }}
+
+# Check logs
+journalctl -u {{ meta.name | lower }}-api -f
+kubectl logs -f deployment/{{ meta.name | lower }}-api
+
+# Check connectivity
+telnet api.{{ meta.name | lower }}.com 443
+```
+
+**Recovery Steps**:
+1. Restart failed services
+2. Scale up if resource exhaustion
+3. Rollback if deployment issue
+4. Implement maintenance page if needed
+
+---
+
+### Database Connection Issues
+**When to use**: Cannot connect to database
+
+**Symptoms**:
+- Connection refused errors
+- Connection timeout
+- Too many connections
+
+**Investigation**:
+```bash
+# Check database service
+systemctl status postgresql
+kubectl get pods -l app=postgres
+
+# Check connection limits
+psql -c "SELECT * FROM pg_stat_activity;" -d {{ meta.name | lower }}
+
+# Check network connectivity
+telnet db.{{ meta.name | lower }}.com 5432
+```
+
+**Resolution**:
+1. Restart database service if crashed
+2. Kill idle connections if at limit
+3. Adjust connection pool settings
+4. Check network connectivity
+5. Review database logs for errors
+
+---
+
+### Authentication Failures
+**When to use**: Users cannot log in
+
+**Investigation**:
+1. Check authentication provider status
+2. Verify API keys and secrets
+3. Review authentication service logs
+4. Check token expiration policies
+5. Verify SSL certificate validity
+
+**Common Issues**:
+- Auth provider outage
+- Expired certificates
+- Configuration changes
+- Rate limiting
+
+**Resolution**:
+1. Switch to backup auth provider if available
+2. Renew expired certificates
+3. Adjust rate limits if necessary
+4. Implement graceful degradation
+
+---
+
+### Payment Processing Issues
+**When to use**: Payment failures or delays
+
+**Investigation**:
+1. Check payment provider status page
+2. Review payment service logs
+3. Verify API credentials
+4. Check webhook endpoints
+5. Monitor transaction queue
+
+**Resolution**:
+1. Contact payment provider if service issue
+2. Retry failed transactions if transient
+3. Implement manual processing if needed
+4. Communicate with affected customers
+
+---
+
+### Server Resource Exhaustion
+**When to use**: High CPU/memory/disk usage
+
+**Investigation**:
+```bash
+# Check resource usage
+top -c
+free -h
+df -h
+
+# Check for memory leaks
+ps aux --sort=-%mem | head
+sudo netstat -tulpn | grep LISTEN
+
+# Check disk space
+du -sh /* | sort -rh | head -10
+```
+
+**Resolution**:
+1. Kill resource-intensive processes if necessary
+2. Clear temporary files and logs
+3. Scale horizontally if possible
+4. Optimize application resource usage
+5. Add monitoring alerts for prevention
+
+---
+
+### Deployment Failures
+**When to use**: Failed deployments or rollouts
+
+**Investigation**:
+1. Check deployment pipeline logs
+2. Verify container/service health
+3. Review resource availability
+4. Check configuration changes
+5. Validate database migrations
+
+**Resolution**:
+1. Rollback to previous stable version
+2. Fix configuration issues
+3. Ensure adequate resources
+4. Re-run failed migrations carefully
+5. Deploy with canary strategy
+
+---
+
+### Security Breach Response
+**When to use**: Suspected unauthorized access
+
+**Immediate Actions** (< 10 minutes):
+1. **DO NOT PANIC** - Document everything
+2. Isolate affected systems
+3. Preserve evidence
+4. Contact security team
+5. Begin incident log
+
+**Investigation**:
+1. Review access logs
+2. Check for suspicious activities
+3. Identify compromised accounts
+4. Assess data exposure
+5. Document timeline
+
+**Communication**:
+- Internal: Security team, legal, executives
+- External: Customers (if data involved), authorities (if required)
+
+---
+
+### DDoS Attack Mitigation
+**When to use**: Abnormal traffic patterns, service degradation
+
+**Immediate Response**:
+1. Enable DDoS protection (CloudFlare, AWS Shield)
+2. Implement rate limiting
+3. Block suspicious IP ranges
+4. Scale infrastructure if possible
+5. Monitor attack patterns
+
+**Investigation**:
+```bash
+# Check traffic patterns
+tail -f /var/log/nginx/access.log | grep -E "GET|POST"
+
+# Monitor connections
+netstat -an | grep :80 | wc -l
+
+# Check blocked IPs
+iptables -L -n | grep DROP
+```
+
+---
+
+## Post-Incident Procedures
+
+### Incident Documentation
+1. **Timeline**: Detailed sequence of events
+2. **Impact**: Users affected, duration, severity
+3. **Root Cause**: Technical cause and contributing factors
+4. **Response**: Actions taken and effectiveness
+5. **Lessons Learned**: What worked, what didn't
+
+### Follow-up Actions
+1. Schedule post-mortem meeting
+2. Create improvement action items
+3. Update monitoring and alerts
+4. Enhance documentation
+5. Communicate with stakeholders
+
+## Preventive Maintenance
+
+### Daily Tasks
+- Review monitoring dashboards
+- Check backup completion
+- Review error logs
+- Monitor resource usage
+
+### Weekly Tasks
+- Performance trend analysis
+- Security log review
+- Capacity planning review
+- Update documentation
+
+### Monthly Tasks
+- Disaster recovery testing
+- Security vulnerability scans
+- Performance optimization review
+- Runbook accuracy validation
+
+---
+*These runbooks should be tested regularly and updated based on operational experience and system changes.*

@@ -1,0 +1,252 @@
+# Accessibility Plan: {{ meta.name }}
+
+**Version:** {{ meta.version }}
+**Generated:** {{ generated_at }}
+**Template:** deep-1.0.0
+
+## Overview
+
+This accessibility plan ensures {{ meta.name }} meets or exceeds accessibility standards for users with disabilities.
+
+{{ problem.statement }}
+
+## Accessibility Standards
+
+### Primary Standards
+- **WCAG 2.1 Level AA** - Web Content Accessibility Guidelines
+- **Section 508** - US Federal accessibility requirements
+- **EN 301 549** - European accessibility standard
+{% if constraints.compliance and 'accessibility' in constraints.compliance %}
+- {{ constraints.compliance }}
+{% endif %}
+
+### Target Compliance Level
+**Level AA compliance** across all user-facing components
+
+## User Groups & Disabilities
+
+### Visual Disabilities
+- **Blind users** - Screen reader dependent
+- **Low vision users** - Need magnification and high contrast
+- **Color blind users** - Cannot distinguish certain colors
+
+### Hearing Disabilities
+- **Deaf users** - Cannot hear audio content
+- **Hard of hearing users** - Need audio amplification
+
+### Motor Disabilities
+- **Users with limited dexterity** - Difficulty with precise movements
+- **Users with mobility impairments** - May use alternative input devices
+
+### Cognitive Disabilities
+- **Users with learning disabilities** - Need clear, simple interfaces
+- **Users with memory impairments** - Need consistent navigation
+
+## Accessibility Requirements
+
+### 1. Perceivable
+#### Text Alternatives (1.1)
+- All images have meaningful alt text
+- Decorative images marked appropriately
+- Complex images have detailed descriptions
+
+#### Time-based Media (1.2)
+- Videos have captions
+- Audio content has transcripts
+- Audio descriptions for visual content
+
+#### Adaptable (1.3)
+- Content structure uses proper headings
+- Information conveyed through color has alternatives
+- Form labels clearly associate with controls
+
+#### Distinguishable (1.4)
+- Color contrast ratios meet AA standards (4.5:1 normal text, 3:1 large text)
+- Text can be resized up to 200% without loss of functionality
+- Audio auto-play is avoided
+
+### 2. Operable
+#### Keyboard Accessible (2.1)
+- All functionality available via keyboard
+- No keyboard traps
+- Visible focus indicators
+
+#### Enough Time (2.2)
+- Time limits can be extended or disabled
+- Moving content can be paused
+- Auto-refresh can be controlled
+
+#### Seizures and Physical Reactions (2.3)
+- Content does not cause seizures
+- Motion can be disabled
+
+#### Navigable (2.4)
+- Skip navigation links provided
+- Page titles are descriptive
+- Focus order is logical
+- Link purposes are clear from context
+
+### 3. Understandable
+#### Readable (3.1)
+- Page language is identified
+- Language changes are identified
+- Definitions available for unusual terms
+
+#### Predictable (3.2)
+- Consistent navigation patterns
+- Consistent component identification
+- Changes of context are predictable
+
+#### Input Assistance (3.3)
+- Error messages are clear and helpful
+- Labels and instructions provided
+- Error prevention for important actions
+
+### 4. Robust
+#### Compatible (4.1)
+- Valid, semantic HTML markup
+- Proper use of accessibility APIs
+- Compatible with assistive technologies
+
+## Implementation Strategy
+
+### Phase 1: Foundation (Weeks 1-4)
+#### Design & Planning
+- Accessibility audit of current designs
+- Color palette accessibility verification
+- Typography and spacing standards
+- Keyboard navigation patterns
+
+#### Development Setup
+- Accessibility linting tools integration
+- Screen reader testing setup
+- Automated accessibility testing
+
+### Phase 2: Component Development (Weeks 5-12)
+#### Core Components
+- Form controls with proper labels
+- Navigation with skip links
+- Modal dialogs with focus management
+- Data tables with proper headers
+
+#### Content Components
+- Image alt text standards
+- Video player with controls
+- Text formatting and structure
+- Icon usage with text alternatives
+
+### Phase 3: Testing & Validation (Weeks 13-16)
+#### Automated Testing
+- axe-core integration
+- Pa11y testing pipeline
+- Color contrast validation
+- Keyboard navigation testing
+
+#### Manual Testing
+- Screen reader testing (NVDA, JAWS, VoiceOver)
+- Keyboard-only navigation
+- High contrast mode testing
+- Zoom testing up to 200%
+
+#### User Testing
+- Testing with users with disabilities
+- Feedback collection and iteration
+- Usability studies with assistive technologies
+
+## Testing Procedures
+
+### Automated Testing Tools
+```bash
+# axe-core for accessibility scanning
+npm install @axe-core/playwright
+
+# Pa11y for command-line testing
+npm install pa11y
+
+# Color contrast analyzer
+npm install color-contrast-analyser
+```
+
+### Screen Reader Testing
+1. **NVDA (Windows)** - Test with latest version
+2. **JAWS (Windows)** - Test with current version
+3. **VoiceOver (macOS)** - Test with Safari
+4. **TalkBack (Android)** - Mobile testing
+5. **VoiceOver (iOS)** - Mobile testing
+
+### Keyboard Testing Scenarios
+1. Tab through all interactive elements
+2. Use arrow keys for custom controls
+3. Test escape key functionality
+4. Verify Enter and Space key actions
+5. Test skip navigation links
+
+### Mobile Accessibility Testing
+- Touch target size (minimum 44px)
+- Gesture alternatives
+- Screen reader compatibility
+- Zoom functionality
+
+## Quality Assurance
+
+### Acceptance Criteria
+- [ ] All automated accessibility tests pass
+- [ ] Screen reader testing completed successfully
+- [ ] Keyboard navigation functions properly
+- [ ] Color contrast meets AA standards
+- [ ] Focus management works correctly
+
+### Review Process
+1. **Development Review** - Code review for accessibility
+2. **Design Review** - Design patterns meet standards
+3. **QA Testing** - Comprehensive accessibility testing
+4. **User Testing** - Validation with target users
+
+## Maintenance & Monitoring
+
+### Regular Audits
+- Monthly automated accessibility scans
+- Quarterly manual testing reviews
+- Annual comprehensive accessibility audits
+- User feedback monitoring
+
+### Training & Education
+- Developer accessibility training
+- Design accessibility guidelines
+- QA testing procedures
+- Content creator guidelines
+
+### Documentation
+- Accessibility statement publication
+- User guide for assistive technologies
+- Developer accessibility documentation
+- Design system accessibility notes
+
+## Success Metrics
+
+### Compliance Metrics
+- WCAG 2.1 AA compliance score
+- Number of accessibility violations
+- Time to resolve accessibility issues
+- User satisfaction scores
+
+### Usage Metrics
+- Assistive technology usage tracking
+- Accessibility feature adoption
+- User completion rates by disability type
+- Support request volume
+
+## Remediation Plan
+
+### Issue Classification
+- **Critical** - Blocks access for users with disabilities
+- **Major** - Significantly impacts user experience
+- **Minor** - Affects usability but doesn't block access
+
+### Response Times
+- Critical: 1 business day
+- Major: 3 business days
+- Minor: 2 weeks
+
+---
+*This accessibility plan should be reviewed and updated with each major release or design change.*

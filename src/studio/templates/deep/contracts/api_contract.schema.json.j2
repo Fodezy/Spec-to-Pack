@@ -1,0 +1,422 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://{{ meta.name | lower }}.com/schemas/api-contract.json",
+  "title": "{{ meta.name }} API Contract Schema",
+  "description": "Contract definition for {{ meta.name }} API interfaces",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of the API contract"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name of the API"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when contract was generated"
+        },
+        "base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for the API"
+        }
+      },
+      "required": ["version", "name", "generated_at", "base_url"],
+      "additionalProperties": false
+    },
+    "authentication": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["bearer", "api_key", "oauth2", "basic"],
+          "description": "Authentication mechanism"
+        },
+        "header": {
+          "type": "string",
+          "description": "Header name for authentication token"
+        },
+        "scheme": {
+          "type": "string",
+          "description": "Authentication scheme (e.g., Bearer)"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Available OAuth2 scopes"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/endpoint"
+      },
+      "description": "API endpoints"
+    },
+    "data_models": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Z][a-zA-Z0-9]*$": {
+          "$ref": "#/$defs/data_model"
+        }
+      },
+      "description": "Data models used by the API"
+    },
+    "error_codes": {
+      "type": "object",
+      "patternProperties": {
+        "^[0-9]{3}$": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "schema": {
+              "$ref": "#/$defs/schema_reference"
+            },
+            "examples": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "required": ["description"],
+          "additionalProperties": false
+        }
+      },
+      "description": "HTTP error codes and their meanings"
+    },
+    "rate_limits": {
+      "type": "object",
+      "properties": {
+        "requests_per_minute": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "requests_per_hour": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "burst_limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "headers": {
+          "type": "object",
+          "properties": {
+            "remaining": {
+              "type": "string",
+              "description": "Header name for remaining requests"
+            },
+            "limit": {
+              "type": "string",
+              "description": "Header name for rate limit"
+            },
+            "reset": {
+              "type": "string",
+              "description": "Header name for reset time"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["meta", "endpoints", "data_models"],
+  "additionalProperties": false,
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/.*",
+          "description": "API endpoint path"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+          "description": "HTTP method"
+        },
+        "summary": {
+          "type": "string",
+          "description": "Brief description of the endpoint"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the endpoint"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter"
+          },
+          "description": "Endpoint parameters"
+        },
+        "request_body": {
+          "$ref": "#/$defs/request_body",
+          "description": "Request body specification"
+        },
+        "responses": {
+          "type": "object",
+          "patternProperties": {
+            "^[0-9]{3}$": {
+              "$ref": "#/$defs/response"
+            }
+          },
+          "description": "Possible responses"
+        },
+        "security": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required security scopes"
+        },
+        "deprecated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether endpoint is deprecated"
+        }
+      },
+      "required": ["path", "method", "summary", "responses"],
+      "additionalProperties": false
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Parameter name"
+        },
+        "in": {
+          "type": "string",
+          "enum": ["query", "header", "path", "cookie"],
+          "description": "Parameter location"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether parameter is required"
+        },
+        "schema": {
+          "$ref": "#/$defs/schema_reference"
+        },
+        "description": {
+          "type": "string",
+          "description": "Parameter description"
+        },
+        "example": {
+          "description": "Example value"
+        }
+      },
+      "required": ["name", "in", "schema"],
+      "additionalProperties": false
+    },
+    "request_body": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "content": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9][a-zA-Z0-9!#$&\\-\\^_]*\\/[a-zA-Z0-9][a-zA-Z0-9!#$&\\-\\^_]*$": {
+              "$ref": "#/$defs/media_type"
+            }
+          }
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": ["content"],
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Response description"
+        },
+        "content": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9][a-zA-Z0-9!#$&\\-\\^_]*\\/[a-zA-Z0-9][a-zA-Z0-9!#$&\\-\\^_]*$": {
+              "$ref": "#/$defs/media_type"
+            }
+          }
+        },
+        "headers": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9][a-zA-Z0-9!#$&\\-\\^_]*$": {
+              "$ref": "#/$defs/header"
+            }
+          }
+        }
+      },
+      "required": ["description"],
+      "additionalProperties": false
+    },
+    "media_type": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "$ref": "#/$defs/schema_reference"
+        },
+        "examples": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9._-]+$": {
+              "$ref": "#/$defs/example"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "header": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "schema": {
+          "$ref": "#/$defs/schema_reference"
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "value": {
+          "description": "Example value"
+        }
+      },
+      "additionalProperties": false
+    },
+    "data_model": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["object", "array", "string", "number", "integer", "boolean", "null"]
+        },
+        "properties": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "$ref": "#/$defs/property"
+            }
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "example": {
+          "description": "Example instance of this model"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "property": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["object", "array", "string", "number", "integer", "boolean", "null"]
+        },
+        "format": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enum": {
+          "type": "array"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pattern": {
+          "type": "string",
+          "format": "regex"
+        },
+        "items": {
+          "$ref": "#/$defs/schema_reference"
+        },
+        "$ref": {
+          "type": "string"
+        },
+        "example": {
+          "description": "Example value"
+        }
+      },
+      "additionalProperties": false
+    },
+    "schema_reference": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/property"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$ref": {
+              "type": "string"
+            }
+          },
+          "required": ["$ref"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

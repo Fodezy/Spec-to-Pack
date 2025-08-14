@@ -1,5 +1,6 @@
 """Artifact classes for generated outputs."""
 
+import hashlib
 from abc import ABC
 from pathlib import Path
 from typing import Any
@@ -17,9 +18,37 @@ class Artifact(BaseModel, ABC):
     path: Path
     pack: PackType
     purpose: str
+    sha256_hash: str | None = None
 
     class Config:
         arbitrary_types_allowed = True
+
+    def calculate_hash(self) -> str:
+        """Calculate SHA-256 hash of the file content."""
+        if not self.path.exists():
+            raise FileNotFoundError(f"Cannot hash non-existent file: {self.path}")
+        
+        sha256_hash = hashlib.sha256()
+        with open(self.path, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(chunk)
+        
+        self.sha256_hash = sha256_hash.hexdigest()
+        return self.sha256_hash
+
+    def verify_integrity(self) -> bool:
+        """Verify file integrity against stored hash."""
+        if self.sha256_hash is None:
+            return False
+        
+        try:
+            current_hash = hashlib.sha256()
+            with open(self.path, 'rb') as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    current_hash.update(chunk)
+            return current_hash.hexdigest() == self.sha256_hash
+        except FileNotFoundError:
+            return False
 
 
 class DocumentArtifact(Artifact):
@@ -62,6 +91,49 @@ class ArtifactIndex(BaseModel):
     def get_by_pack(self, pack: PackType) -> list[Artifact]:
         """Get artifacts by pack type."""
         return [a for a in self.artifacts if a.pack == pack]
+
+    def calculate_all_hashes(self) -> None:
+        """Calculate SHA-256 hashes for all artifacts."""
+        for artifact in self.artifacts:
+            if artifact.path.exists():
+                artifact.calculate_hash()
+
+    def verify_manifest_integrity(self) -> dict[str, Any]:
+        """Verify integrity of all artifacts in the manifest."""
+        results = {
+            "total_artifacts": len(self.artifacts),
+            "verified": 0,
+            "failed": 0,
+            "missing": 0,
+            "details": []
+        }
+
+        for artifact in self.artifacts:
+            if not artifact.path.exists():
+                results["missing"] += 1
+                results["details"].append({
+                    "name": artifact.name,
+                    "status": "missing",
+                    "path": str(artifact.path)
+                })
+            elif artifact.verify_integrity():
+                results["verified"] += 1
+                results["details"].append({
+                    "name": artifact.name,
+                    "status": "verified",
+                    "hash": artifact.sha256_hash
+                })
+            else:
+                results["failed"] += 1
+                results["details"].append({
+                    "name": artifact.name,
+                    "status": "hash_mismatch",
+                    "path": str(artifact.path),
+                    "expected_hash": artifact.sha256_hash
+                })
+
+        results["integrity_ok"] = results["failed"] == 0 and results["missing"] == 0
+        return results
 
     def to_json(self) -> str:
         """Convert to JSON string."""

@@ -1,0 +1,319 @@
+# Observability Plan: {{ meta.name }}
+
+**Version:** {{ meta.version }}
+**Generated:** {{ generated_at }}
+**Template:** deep-1.0.0
+
+## Overview
+
+This observability plan defines monitoring, logging, and alerting strategies for {{ meta.name }} to ensure system reliability and performance.
+
+{{ problem.statement }}
+
+## Observability Pillars
+
+### 1. Metrics
+Quantitative measurements of system behavior over time.
+
+### 2. Logs
+Detailed records of events and transactions.
+
+### 3. Traces
+Request flows through distributed systems.
+
+## Key Performance Indicators (KPIs)
+
+### Business Metrics
+{% if success_metrics %}
+{% for metric in success_metrics %}
+- **{{ metric.name }}**: {{ metric.description }}
+  - Target: {{ metric.target if metric.target else 'TBD' }}
+  - Measurement: {{ metric.measurement if metric.measurement else 'TBD' }}
+{% endfor %}
+{% else %}
+- User engagement metrics
+- Conversion rates
+- Feature adoption rates
+- Customer satisfaction scores
+{% endif %}
+
+### System Health Metrics
+- **Availability**: System uptime percentage
+- **Latency**: Response time percentiles (p50, p90, p99)
+- **Throughput**: Requests per second
+- **Error Rate**: Percentage of failed requests
+
+### Infrastructure Metrics
+- CPU utilization
+- Memory usage
+- Disk I/O
+- Network throughput
+- Database performance
+
+## Monitoring Strategy
+
+### Application Performance Monitoring (APM)
+```yaml
+Tools:
+  Primary: New Relic / Datadog / AppDynamics
+  Backup: Prometheus + Grafana
+  
+Metrics Collected:
+  - Request response times
+  - Database query performance
+  - External service calls
+  - Error rates and exceptions
+```
+
+### Infrastructure Monitoring
+```yaml
+Tools:
+  Primary: CloudWatch / Azure Monitor / Google Cloud Monitoring
+  Secondary: Nagios / Zabbix
+  
+Metrics Collected:
+  - Server resource utilization
+  - Network connectivity
+  - Storage capacity
+  - Container health (if applicable)
+```
+
+### Real User Monitoring (RUM)
+```yaml
+Tools:
+  Primary: Google Analytics / Adobe Analytics
+  Secondary: Hotjar / FullStory
+  
+Metrics Collected:
+  - Page load times
+  - User interaction patterns
+  - Browser/device distribution
+  - Geographic performance
+```
+
+## Logging Strategy
+
+### Log Levels
+```
+ERROR   - System errors requiring immediate attention
+WARN    - Potential issues that don't stop execution
+INFO    - General operational messages
+DEBUG   - Detailed diagnostic information
+```
+
+### Log Structure
+```json
+{
+  "timestamp": "2024-01-01T12:00:00Z",
+  "level": "INFO",
+  "service": "{{ meta.name }}-api",
+  "traceId": "abc123",
+  "spanId": "def456",
+  "userId": "user123",
+  "message": "User action completed",
+  "context": {
+    "action": "purchase",
+    "amount": 99.99,
+    "currency": "USD"
+  }
+}
+```
+
+### Log Management
+- **Centralized Logging**: ELK Stack / Splunk / CloudWatch Logs
+- **Log Retention**: 30 days for debug, 90 days for info/warn, 1 year for error
+- **Log Rotation**: Daily rotation, compressed storage
+- **Security**: PII scrubbing, access controls
+
+## Distributed Tracing
+
+### Tracing Strategy
+```yaml
+Tool: Jaeger / Zipkin / AWS X-Ray
+
+Instrumentation:
+  - HTTP requests
+  - Database calls
+  - External service calls
+  - Background job processing
+
+Sampling:
+  - Production: 1% sampling rate
+  - Staging: 10% sampling rate
+  - Development: 100% sampling rate
+```
+
+### Trace Context
+- Request ID propagation
+- User context
+- Business context
+- Performance annotations
+
+## Alerting Strategy
+
+### Alert Categories
+
+#### Critical Alerts (Page immediately)
+- **System Down**: Availability < 99%
+- **High Error Rate**: Error rate > 5%
+- **Extreme Latency**: p99 > 5 seconds
+- **Security Breach**: Unauthorized access detected
+
+#### Warning Alerts (Notify during business hours)
+- **Performance Degradation**: p90 > 2 seconds
+- **Increased Error Rate**: Error rate > 2%
+- **Resource Exhaustion**: CPU > 80%, Memory > 85%
+- **Dependency Issues**: External service failures
+
+#### Info Alerts (Log only)
+- **Deployment Events**: New releases
+- **Scaling Events**: Auto-scaling actions
+- **Maintenance Windows**: Scheduled maintenance
+
+### Alert Channels
+```yaml
+Critical:
+  - PagerDuty (immediate)
+  - SMS to on-call engineer
+  - Slack #incidents channel
+
+Warning:
+  - Email to team
+  - Slack #alerts channel
+  - Dashboard notifications
+
+Info:
+  - Log aggregation
+  - Dashboard updates
+  - Weekly summary reports
+```
+
+## Dashboards & Visualization
+
+### Executive Dashboard
+- System health overview
+- Business metrics summary
+- SLA compliance status
+- Recent incident summary
+
+### Operations Dashboard
+- Real-time system metrics
+- Error rate trends
+- Performance percentiles
+- Resource utilization
+
+### Development Dashboard
+- Application performance metrics
+- Error logs and traces
+- Deployment pipeline status
+- Code quality metrics
+
+### Custom Dashboards
+{% if constraints.technical.monitoring %}
+{{ constraints.technical.monitoring }}
+{% else %}
+- Feature-specific metrics
+- User journey analytics
+- A/B testing results
+- Cost optimization metrics
+{% endif %}
+
+## Service Level Objectives (SLOs)
+
+### Availability SLO
+- **Target**: 99.9% uptime
+- **Measurement**: Successful requests / Total requests
+- **Alert Threshold**: < 99.5%
+
+### Latency SLO
+- **Target**: p90 < 500ms, p99 < 2s
+- **Measurement**: Response time percentiles
+- **Alert Threshold**: p90 > 1s
+
+### Error Rate SLO
+- **Target**: < 0.5% error rate
+- **Measurement**: Failed requests / Total requests
+- **Alert Threshold**: > 1%
+
+## Incident Response Integration
+
+### Runbook Integration
+- Alert links to relevant runbooks
+- Auto-generated incident tickets
+- Context-rich alert descriptions
+- Historical incident references
+
+### Post-Incident Analysis
+- Metrics during incident timeframe
+- Log analysis and correlation
+- Timeline reconstruction
+- Root cause identification
+
+## Cost Management
+
+### Monitoring Costs
+- Log ingestion and storage costs
+- Metrics collection and retention
+- APM tool licensing
+- Alert notification costs
+
+### Optimization Strategies
+- Intelligent log sampling
+- Metric aggregation
+- Archive old data
+- Right-size monitoring resources
+
+## Implementation Timeline
+
+### Phase 1: Foundation (Weeks 1-4)
+- Set up basic monitoring infrastructure
+- Implement structured logging
+- Configure basic alerts
+- Create initial dashboards
+
+### Phase 2: Enhancement (Weeks 5-8)
+- Add distributed tracing
+- Implement custom metrics
+- Set up advanced alerting
+- Create business dashboards
+
+### Phase 3: Optimization (Weeks 9-12)
+- Fine-tune alert thresholds
+- Optimize cost and performance
+- Implement predictive monitoring
+- Add anomaly detection
+
+## Security & Compliance
+
+### Data Protection
+- Log data encryption
+- Access controls and audit trails
+- PII scrubbing and masking
+- Retention policy compliance
+
+### Compliance Requirements
+{% if constraints.compliance %}
+{{ constraints.compliance }}
+{% else %}
+- SOX compliance for financial data
+- HIPAA compliance for health data
+- GDPR compliance for personal data
+- Industry-specific regulations
+{% endif %}
+
+## Maintenance & Evolution
+
+### Regular Reviews
+- Monthly SLO review
+- Quarterly dashboard optimization
+- Annual monitoring strategy review
+- Continuous alert tuning
+
+### Tool Evaluation
+- Performance benchmarking
+- Cost-benefit analysis
+- Feature gap assessment
+- Vendor relationship management
+
+---
+*This observability plan should be reviewed and updated quarterly to ensure it meets evolving system and business requirements.*

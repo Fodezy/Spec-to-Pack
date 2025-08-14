@@ -1,0 +1,191 @@
+# Threat Model: {{ meta.name }}
+
+**Version:** {{ meta.version }}
+**Generated:** {{ generated_at }}
+**Template:** deep-1.0.0
+
+## Executive Summary
+
+This threat model identifies and analyzes security risks for {{ meta.name }}.
+
+{{ problem.statement }}
+
+## System Overview
+
+### Architecture Components
+{% if constraints.get('technical', {}).get('architecture') %}
+{{ constraints.technical.architecture }}
+{% else %}
+- Frontend components
+- Backend services
+- Data storage
+- External integrations
+{% endif %}
+
+### Data Flow
+1. User input and authentication
+2. Data processing and validation
+3. Storage and persistence
+4. Output and response delivery
+
+## Threat Analysis
+
+### STRIDE Threat Categories
+
+#### Spoofing
+**Risk Level:** {% if constraints.get('security') and 'authentication' in constraints.get('security', {}) %}Medium{% else %}High{% endif %}
+
+- **Threat:** Unauthorized users impersonating legitimate users
+- **Assets at Risk:** User accounts, sensitive data
+- **Mitigations:**
+  - Multi-factor authentication
+  - Strong password policies
+  - Session management
+
+#### Tampering
+**Risk Level:** Medium
+
+- **Threat:** Data modification by unauthorized parties
+- **Assets at Risk:** User data, system configuration
+- **Mitigations:**
+  - Input validation
+  - Data integrity checks
+  - Audit logging
+
+#### Repudiation
+**Risk Level:** Low
+
+- **Threat:** Users denying actions they performed
+- **Assets at Risk:** Audit trail, accountability
+- **Mitigations:**
+  - Comprehensive logging
+  - Digital signatures
+  - Non-repudiation controls
+
+#### Information Disclosure
+**Risk Level:** High
+
+- **Threat:** Unauthorized access to sensitive information
+- **Assets at Risk:** {% if constraints.get('data') %}{{ constraints.data }}{% else %}Personal data, business secrets{% endif %}
+- **Mitigations:**
+  - Encryption at rest and in transit
+  - Access controls
+  - Data classification
+
+#### Denial of Service
+**Risk Level:** Medium
+
+- **Threat:** System unavailability or performance degradation
+- **Assets at Risk:** Service availability, user experience
+- **Mitigations:**
+  - Rate limiting
+  - Load balancing
+  - DDoS protection
+
+#### Elevation of Privilege
+**Risk Level:** High
+
+- **Threat:** Users gaining unauthorized elevated access
+- **Assets at Risk:** System administration, sensitive operations
+- **Mitigations:**
+  - Principle of least privilege
+  - Role-based access control
+  - Regular privilege reviews
+
+## Risk Assessment
+
+### High Priority Threats
+1. **Information Disclosure** - Unauthorized data access
+2. **Elevation of Privilege** - Privilege escalation attacks
+
+### Medium Priority Threats
+1. **Spoofing** - Identity impersonation
+2. **Tampering** - Data integrity violations
+3. **Denial of Service** - Availability attacks
+
+### Low Priority Threats
+1. **Repudiation** - Action denial
+
+## Security Controls
+
+### Authentication & Authorization
+- Multi-factor authentication (MFA)
+- Role-based access control (RBAC)
+- Session timeout policies
+
+### Data Protection
+- Encryption (AES-256 for data at rest)
+- TLS 1.3 for data in transit
+- Data masking for sensitive fields
+
+### Monitoring & Logging
+- Security event logging
+- Anomaly detection
+- Incident response procedures
+
+### Infrastructure Security
+{% if constraints.get('technical', {}).get('infrastructure') %}
+{{ constraints.technical.infrastructure }}
+{% else %}
+- Network segmentation
+- Firewall rules
+- Intrusion detection systems
+{% endif %}
+
+## Compliance Requirements
+
+{% if constraints.get('compliance') %}
+{{ constraints.compliance }}
+{% else %}
+- GDPR compliance for data protection
+- SOC 2 Type II controls
+- Industry-specific regulations
+{% endif %}
+
+## Risk Mitigation Roadmap
+
+### Phase 1: Critical (0-3 months)
+- Implement authentication controls
+- Deploy encryption for sensitive data
+- Establish monitoring and logging
+
+### Phase 2: Important (3-6 months)
+- Deploy advanced threat detection
+- Implement data loss prevention
+- Conduct security testing
+
+### Phase 3: Maintenance (6+ months)
+- Regular security assessments
+- Threat model updates
+- Security training programs
+
+## Testing & Validation
+
+### Security Testing Types
+- Static Application Security Testing (SAST)
+- Dynamic Application Security Testing (DAST)
+- Interactive Application Security Testing (IAST)
+- Penetration testing
+
+### Test Scenarios
+1. Authentication bypass attempts
+2. SQL injection and XSS attacks
+3. Privilege escalation tests
+4. Data exfiltration scenarios
+
+## Incident Response
+
+### Response Team
+- Security lead
+- Development team
+- Infrastructure team
+- Legal/compliance team
+
+### Response Procedures
+1. Detection and analysis
+2. Containment and eradication
+3. Recovery and post-incident analysis
+4. Documentation and lessons learned
+
+---
+*This threat model should be reviewed and updated quarterly or when significant system changes occur.*
