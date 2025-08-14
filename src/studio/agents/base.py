@@ -1,9 +1,13 @@
 """Base agent interface and implementations."""
 
+import datetime
+import zipfile
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from ..artifacts import AgentOutput, Blackboard
-from ..types import RunContext, SourceSpec, Status
+from ..rendering import TemplateRenderer
+from ..types import PackType, RunContext, SourceSpec, Status
 
 
 class Agent(ABC):
@@ -17,6 +21,24 @@ class Agent(ABC):
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Run the agent with given context, spec, and blackboard."""
         pass
+    
+    def _create_template_data(self, ctx: RunContext, spec: SourceSpec) -> dict:
+        """Create standardized template data structure for all agents."""
+        return {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "problem": spec.problem.model_dump() if spec.problem else {},
+            "constraints": spec.constraints.model_dump() if spec.constraints else {},
+            "success_metrics": spec.success_metrics if hasattr(spec, 'success_metrics') and spec.success_metrics else [],
+            "dials": ctx.dials.model_dump() if ctx.dials else {},
+            "test_strategy": spec.test_strategy.model_dump() if spec.test_strategy else {},
+            "diagram_scope": spec.diagram_scope.model_dump() if spec.diagram_scope else {},
+            "contracts_data": spec.contracts_data.model_dump() if spec.contracts_data else {},
+            "operations": spec.operations.model_dump() if spec.operations else {},
+            "export": spec.export.model_dump() if spec.export else {},
+            "run_id": str(ctx.run_id),
+            "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            "pack_type": PackType.DEEP.value if hasattr(ctx, 'pack_type') and ctx.pack_type == PackType.DEEP else PackType.BALANCED.value
+        }
 
 
 class FramerAgent(Agent):
@@ -561,13 +583,8 @@ class ThreatModelAgent(Agent):
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
 
-        # Prepare template data
-        template_data = {
-            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
-            "problem": spec.problem.model_dump() if spec.problem else {},
-            "constraints": spec.constraints.model_dump() if spec.constraints else {},
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
-        }
+        # Prepare template data using standardized helper
+        template_data = self._create_template_data(ctx, spec)
 
         try:
             # Load and render template
@@ -627,13 +644,8 @@ class AccessibilityAgent(Agent):
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
 
-        # Prepare template data
-        template_data = {
-            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
-            "problem": spec.problem.model_dump() if spec.problem else {},
-            "constraints": spec.constraints.model_dump() if spec.constraints else {},
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
-        }
+        # Prepare template data using standardized helper
+        template_data = self._create_template_data(ctx, spec)
 
         try:
             # Load and render template
@@ -693,14 +705,8 @@ class ObservabilityAgent(Agent):
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
 
-        # Prepare template data
-        template_data = {
-            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
-            "problem": spec.problem.model_dump() if spec.problem else {},
-            "constraints": spec.constraints.model_dump() if spec.constraints else {},
-            "success_metrics": spec.success_metrics if hasattr(spec, 'success_metrics') and spec.success_metrics else [],
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
-        }
+        # Prepare template data using standardized helper
+        template_data = self._create_template_data(ctx, spec)
 
         try:
             # Load and render template
@@ -760,13 +766,8 @@ class RunbookAgent(Agent):
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
 
-        # Prepare template data
-        template_data = {
-            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
-            "problem": spec.problem.model_dump() if spec.problem else {},
-            "constraints": spec.constraints.model_dump() if spec.constraints else {},
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
-        }
+        # Prepare template data using standardized helper
+        template_data = self._create_template_data(ctx, spec)
 
         try:
             # Load and render template
@@ -826,14 +827,8 @@ class SLOAgent(Agent):
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
 
-        # Prepare template data
-        template_data = {
-            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
-            "problem": spec.problem.model_dump() if spec.problem else {},
-            "constraints": spec.constraints.model_dump() if spec.constraints else {},
-            "success_metrics": spec.success_metrics if hasattr(spec, 'success_metrics') and spec.success_metrics else [],
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
-        }
+        # Prepare template data using standardized helper
+        template_data = self._create_template_data(ctx, spec)
 
         try:
             # Load and render template
@@ -893,13 +888,8 @@ class ADRAgent(Agent):
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
 
-        # Prepare template data
-        template_data = {
-            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
-            "problem": spec.problem.model_dump() if spec.problem else {},
-            "constraints": spec.constraints.model_dump() if spec.constraints else {},
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
-        }
+        # Prepare template data using standardized helper
+        template_data = self._create_template_data(ctx, spec)
 
         try:
             # Load and render template
@@ -959,12 +949,8 @@ class CIWorkflowAgent(Agent):
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
 
-        # Prepare template data
-        template_data = {
-            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
-            "constraints": spec.constraints.model_dump() if spec.constraints else {},
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
-        }
+        # Prepare template data using standardized helper
+        template_data = self._create_template_data(ctx, spec)
 
         try:
             # Load and render template
@@ -1024,11 +1010,8 @@ class ContractAgent(Agent):
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
 
-        # Prepare template data
-        template_data = {
-            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
-        }
+        # Prepare template data using standardized helper
+        template_data = self._create_template_data(ctx, spec)
 
         artifacts = []
         try:

@@ -3,46 +3,54 @@
 %% Template: balanced-1.0.0
 
 sequenceDiagram
-    participant User
-    participant System
-    participant API
+    participant Customer
+    participant WebApp
+    participant AuthService
+    participant ProductAPI
+    participant CartAPI
+    participant PaymentGateway
     participant Database
     
-    {% if diagram_scope.get('user_flows') %}
-    %% User flows from spec
-    {% for flow in diagram_scope.user_flows %}
-    Note over User,Database: {{ flow }} Flow
-    User->>+System: Initiate {{ flow }}
-    System->>+API: Validate request
-    API-->>-System: Validation result
+    %% E-commerce Customer Journey
+    Note over Customer,Database: User Registration & Login
+    Customer->>+WebApp: Access platform
+    WebApp->>+AuthService: Authenticate user
+    AuthService->>+Database: Validate credentials
+    Database-->>-AuthService: User data
+    AuthService-->>-WebApp: Authentication token
+    WebApp-->>-Customer: Welcome dashboard
     
-    alt Validation Success
-        System->>+Database: Query/Update data
-        Database-->>-System: Data response
-        System-->>User: {{ flow }} successful
-    else Validation Failure
-        System-->>User: Error: Invalid request
-    end
-    {% endfor %}
-    {% else %}
-    %% Default interaction flow
-    Note over User,Database: Core System Interaction
+    Note over Customer,Database: Product Browsing & Selection
+    Customer->>+WebApp: Browse products
+    WebApp->>+ProductAPI: Get product catalog
+    ProductAPI->>+Database: Query products
+    Database-->>-ProductAPI: Product list
+    ProductAPI-->>-WebApp: Filtered products
+    WebApp-->>-Customer: Display products
     
-    User->>+System: Send request
-    System->>+API: Process request
-    API->>+Database: Query data
-    Database-->>-API: Return data
-    API-->>-System: Processed response
-    System-->>-User: Final response
-    {% endif %}
+    Note over Customer,Database: Shopping Cart & Checkout
+    Customer->>+WebApp: Add to cart
+    WebApp->>+CartAPI: Update cart
+    CartAPI->>+Database: Save cart state
+    Database-->>-CartAPI: Confirmation
+    CartAPI-->>-WebApp: Cart updated
+    WebApp-->>-Customer: Item added
+    
+    Customer->>+WebApp: Proceed to checkout
+    WebApp->>+PaymentGateway: Process payment
+    PaymentGateway-->>-WebApp: Payment confirmation
+    WebApp->>+Database: Create order
+    Database-->>-WebApp: Order ID
+    WebApp-->>-Customer: Order confirmation
     
     %% Error handling
-    Note over User,Database: Error Handling
-    User->>+System: Invalid request
-    System->>System: Validate input
-    System-->>User: Error response
+    Note over Customer,Database: Error Handling
+    Customer->>+WebApp: Invalid payment data
+    WebApp->>WebApp: Validate input
+    WebApp-->>Customer: Validation error
     
-    %% Performance monitoring
-    Note over System,API: Performance Tracking
-    System->>API: Log request metrics
-    API->>API: Track response time
+    %% Admin operations
+    Note over WebApp,Database: Admin Dashboard
+    WebApp->>+Database: Generate reports
+    Database-->>-WebApp: Sales analytics
+    WebApp->>WebApp: Track inventory
