@@ -105,11 +105,19 @@ class FramerAgent(Agent):
 class LibrarianAgent(Agent):
     """Agent that fetches and indexes research content."""
 
-    def __init__(self):
+    def __init__(self, browser_adapter=None, vector_store_adapter=None, embeddings_model=None):
         super().__init__("LibrarianAgent")
+        self.browser_adapter = browser_adapter
+        self.vector_store_adapter = vector_store_adapter  
+        self.embeddings_model = embeddings_model
 
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Fetch and index research content."""
+        import hashlib
+        import uuid
+        from datetime import datetime
+        from ..types import ContentProvenance, ResearchDocument
+        
         if ctx.offline:
             return AgentOutput(
                 notes={"action": "skipped_research", "reason": "offline_mode"},
@@ -117,12 +125,142 @@ class LibrarianAgent(Agent):
                 status=Status.OK.value
             )
 
-        # Stub implementation
-        return AgentOutput(
-            notes={"action": "research_completed", "sources": []},
-            artifacts=[],
-            status=Status.OK.value
-        )
+        # Use stub adapters if none provided
+        if self.browser_adapter is None:
+            from ..adapters.browser import StubBrowserAdapter
+            self.browser_adapter = StubBrowserAdapter()
+            
+        if self.vector_store_adapter is None:
+            from ..adapters.vector_store import StubVectorStoreAdapter
+            self.vector_store_adapter = StubVectorStoreAdapter()
+            
+        if self.embeddings_model is None:
+            from ..adapters.embeddings import StubEmbeddingsAdapter
+            self.embeddings_model = StubEmbeddingsAdapter()
+
+        research_docs = []
+        fetched_count = 0
+        error_count = 0
+        
+        try:
+            # Get URLs from research context or generate based on problem statement
+            urls_to_fetch = spec.research_context.search_domains if spec.research_context.search_domains else []
+            
+            # If no URLs provided, use stub URLs based on problem context
+            if not urls_to_fetch:
+                urls_to_fetch = self._generate_research_urls(spec.problem.statement)
+            
+            # Limit number of URLs to process
+            max_docs = min(spec.research_context.max_documents, len(urls_to_fetch))
+            
+            for i, url in enumerate(urls_to_fetch[:max_docs]):
+                try:
+                    # Fetch content with offline mode check
+                    html_content = self.browser_adapter.fetch(url, offline_mode=ctx.offline)
+                    
+                    if html_content.status_code == 200:
+                        # Extract clean text
+                        text_content = self.browser_adapter.extract(html_content)
+                        
+                        if text_content.strip():
+                            # Create content hash for deduplication
+                            content_hash = hashlib.sha256(text_content.encode('utf-8')).hexdigest()
+                            
+                            # Create provenance record
+                            provenance = ContentProvenance(
+                                source_url=url,
+                                retrieved_at=datetime.utcnow(),
+                                chunk_id=str(uuid.uuid4()),
+                                content_hash=content_hash,
+                                metadata={
+                                    "status_code": html_content.status_code,
+                                    "content_length": len(text_content),
+                                    "headers": html_content.headers
+                                }
+                            )
+                            
+                            # Create research document
+                            research_doc = ResearchDocument(
+                                content=text_content,
+                                provenance=provenance
+                            )
+                            
+                            # Add embeddings if enabled and model available
+                            if spec.research_context.include_embeddings and self.embeddings_model:
+                                try:
+                                    embeddings = self._generate_embeddings(text_content)
+                                    research_doc.embedding = embeddings
+                                    
+                                    # Index in vector store
+                                    if self.vector_store_adapter:
+                                        self.vector_store_adapter.index(
+                                            doc_id=provenance.chunk_id,
+                                            embedding=embeddings,
+                                            content=text_content,
+                                            metadata=provenance.model_dump()
+                                        )
+                                except Exception as embed_error:
+                                    # Continue without embeddings on error
+                                    pass
+                            
+                            research_docs.append(research_doc)
+                            fetched_count += 1
+                            
+                except Exception as e:
+                    error_count += 1
+                    # Continue processing other URLs
+                    continue
+            
+            # Store research documents in blackboard for other agents
+            blackboard.notes["research_documents"] = research_docs
+            
+            return AgentOutput(
+                notes={
+                    "action": "research_completed", 
+                    "urls_processed": len(urls_to_fetch[:max_docs]),
+                    "documents_fetched": fetched_count,
+                    "errors": error_count,
+                    "total_content_length": sum(len(doc.content) for doc in research_docs),
+                    "embeddings_enabled": spec.research_context.include_embeddings,
+                    "vector_store_used": self.vector_store_adapter is not None
+                },
+                artifacts=[],  # Research content stored in blackboard, not as artifacts
+                status=Status.OK.value
+            )
+            
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "research_failed",
+                    "error": str(e),
+                    "documents_partial": len(research_docs)
+                },
+                artifacts=[],
+                status=Status.FAIL.value
+            )
+            
+    def _generate_research_urls(self, problem_statement: str) -> list[str]:
+        """Generate stub research URLs based on problem statement."""
+        # In a real implementation, this might use search APIs or predefined sources
+        # For now, return stub URLs for testing
+        return [
+            "https://example.com/docs/overview",
+            "https://example.com/best-practices", 
+            "https://example.com/implementation-guide"
+        ]
+        
+    def _generate_embeddings(self, text: str) -> list[float]:
+        """Generate embeddings using the configured model."""
+        if self.embeddings_model is None:
+            # Return stub embeddings for testing
+            return [0.1] * 384  # BGE-small dimension
+            
+        try:
+            # Use embeddings adapter
+            return self.embeddings_model.encode(text)
+        except Exception:
+            # Return stub embeddings on error
+            return [0.1] * 384
 
 
 class SlicerAgent(Agent):

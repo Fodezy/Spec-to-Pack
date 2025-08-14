@@ -4,6 +4,7 @@ import time
 from typing import Any
 
 from .adapters.browser import BrowserAdapter, StubBrowserAdapter
+from .adapters.embeddings import EmbeddingsAdapter, StubEmbeddingsAdapter
 from .adapters.llm import LLMAdapter, StubLLMAdapter
 from .adapters.vector_store import StubVectorStoreAdapter, VectorStoreAdapter
 from .agents.base import (
@@ -50,7 +51,8 @@ class Orchestrator:
         timeout_per_step_sec: int = 20,  # Per R1 specification
         llm_adapter: LLMAdapter | None = None,
         vector_store_adapter: VectorStoreAdapter | None = None,
-        browser_adapter: BrowserAdapter | None = None
+        browser_adapter: BrowserAdapter | None = None,
+        embeddings_adapter: EmbeddingsAdapter | None = None
     ):
         """Initialize orchestrator with budgets and adapters."""
         self.step_budget = step_budget
@@ -60,6 +62,7 @@ class Orchestrator:
         self.llm_adapter = llm_adapter or StubLLMAdapter()
         self.vector_store_adapter = vector_store_adapter or StubVectorStoreAdapter()
         self.browser_adapter = browser_adapter or StubBrowserAdapter()
+        self.embeddings_adapter = embeddings_adapter or StubEmbeddingsAdapter()
 
         # Core components
         self.schema_validator = SchemaValidator()
@@ -68,7 +71,11 @@ class Orchestrator:
         # Agent registry
         self.agents: dict[str, Agent] = {
             "framer": FramerAgent(),
-            "librarian": LibrarianAgent(),
+            "librarian": LibrarianAgent(
+                browser_adapter=self.browser_adapter,
+                vector_store_adapter=self.vector_store_adapter,
+                embeddings_model=self.embeddings_adapter
+            ),
             "prd_writer": PRDWriterAgent(),
             "diagrammer": DiagrammerAgent(),
             "qa_architect": QAArchitectAgent(),

@@ -122,6 +122,30 @@ class Export(BaseModel):
     bundle: bool = False
 
 
+class ContentProvenance(BaseModel):
+    """Provenance tracking for retrieved content."""
+    source_url: str
+    retrieved_at: datetime = Field(default_factory=datetime.utcnow)
+    chunk_id: str
+    content_hash: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ResearchDocument(BaseModel):
+    """Research document with provenance."""
+    content: str
+    provenance: ContentProvenance
+    embedding: list[float] | None = None
+    
+    
+class ResearchContext(BaseModel):
+    """Research context for LibrarianAgent."""
+    query_terms: list[str] = Field(default_factory=list)
+    search_domains: list[str] = Field(default_factory=list)
+    max_documents: int = 10
+    include_embeddings: bool = True
+
+
 class SourceSpec(BaseModel):
     """Main source specification."""
     meta: Meta
@@ -133,6 +157,7 @@ class SourceSpec(BaseModel):
     test_strategy: TestStrategy = Field(default_factory=TestStrategy)
     operations: Operations = Field(default_factory=Operations)
     export: Export = Field(default_factory=Export)
+    research_context: ResearchContext = Field(default_factory=ResearchContext)
 
     def is_valid(self) -> bool:
         """Check if the spec is valid."""

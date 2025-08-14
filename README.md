@@ -2,9 +2,10 @@
 
 Generate high-quality engineering document **packs** from a structured product **spec**. Feed it an Idea + Decisions (or a Source Spec), and it will validate, orchestrate agents, render templates, and emit a consistent artifact set (e.g., PRD, Test Plan, diagrams, roadmaps) along with a machine-readable manifest.
 
-> Status: active development. See the Roadmap section for milestone scope.
+> Status: **Active Development** | **M3 Complete** - Deep pack generation with contracts, CI workflows, and security documentation now available.
 
 ---
+
 
 ## Why
 
@@ -19,62 +20,139 @@ Teams waste time rewriting the same docs in different formats. Spec-to-Pack Stud
 
 ## What it produces
 
-Two primary “packs” (with more possible later):
+Transform your project ideas into comprehensive documentation packs:
 
-* **Balanced Pack v1**
-  PRD, Test Plan, lifecycle & sequence diagrams, and a draft roadmap — rendered via agents & templates.
+### **🎯 Balanced Pack** - *Business-Ready Documentation*
+* **Product Requirements Document (PRD)** - Detailed requirements with your actual project context
+* **Test Plan** - Comprehensive testing strategy with QA enhancements  
+* **Project Roadmap** - Timeline and milestone planning
+* **System Diagrams** - E-commerce specific lifecycle and sequence diagrams
+* **Project Brief** - Executive summary and overview
 
-* **Engineering Deep Pack**
-  Deep engineering docs, generated JSON/YAML contracts, CI workflow, and a packaged zip with an integrity manifest.
+### **⚡ Deep Pack** - *Engineering-Grade Documentation*
+* **Security Documentation** - STRIDE threat models with risk assessments
+* **Service Level Objectives (SLOs)** - Performance targets with error budget policies
+* **CI/CD Pipeline** - Production-ready GitHub Actions workflow with security scanning
+* **Contract Schemas** - API, data, and service contract definitions (JSON Schema 2020-12)
+* **ZIP Bundle** - Complete package with integrity manifest
 
-All outputs are tracked in `artifact_index.json` with SHA-256 and template metadata.
+### **📊 Output Quality**
+All outputs are:
+* **Personalized** - Generated from your actual idea.yaml content, not generic templates
+* **Production-Ready** - Professional quality documentation suitable for enterprise projects
+* **Auditable** - Complete artifact tracking in `artifact_index.json` with SHA-256 hashes
+* **Deterministic** - Identical outputs for identical inputs (except timestamps)
 
 ---
 
-## CLI at a glance
+## Quick Start
 
+### **Installation**
 ```bash
-# Validate a spec
-studiogen validate path/to/source_spec.yaml
-
-# Generate a pack (Balanced by default)
-studiogen generate \
-  --idea path/to/idea.yaml \
-  --decisions path/to/decisions.yaml \
-  --out ./out
-
-# Helpful flags (planned/rolling out)
-studiogen generate --dry-run           # preview artifacts & diffs
-studiogen generate --offline           # no network, enforce guards
-studiogen generate --dials path/to/dials.yaml
+git clone https://github.com/Fodezy/Spec-to-Pack.git
+cd Spec-to-Pack
+pip install -e ".[dev]"
 ```
 
-> The CLI name and flags are part of the evolving DX; see milestone notes for WIP.
+### **Generate Your First Pack**
+```bash
+# Create your idea file
+cat > idea.yaml << 'EOF'
+name: "E-Commerce Platform"
+description: "Modern e-commerce solution with user management and payment processing"
+problem_statement: "Small businesses need affordable, scalable e-commerce solutions"
+target_audience: "Small to medium business owners"
+key_features:
+  - "User registration and authentication"
+  - "Product catalog with search"
+  - "Shopping cart and checkout"
+  - "Payment processing"
+  - "Admin dashboard"
+EOF
+
+# Create decisions file
+cat > decisions.yaml << 'EOF'
+dials:
+  audience_mode: "business"
+  development_flow: "agile"  
+  test_depth: "comprehensive"
+EOF
+
+# Generate business documentation
+python -m studio.cli generate \
+  --idea idea.yaml \
+  --decisions decisions.yaml \
+  --pack balanced \
+  --out ./output
+
+# Generate engineering documentation  
+python -m studio.cli generate \
+  --idea idea.yaml \
+  --decisions decisions.yaml \
+  --pack deep \
+  --out ./output_deep
+```
+
+### **Available Commands**
+```bash
+# Validate your input files
+python -m studio.cli validate path/to/spec.yaml
+
+# Generate specific pack types
+python -m studio.cli generate --pack balanced  # Business docs
+python -m studio.cli generate --pack deep      # Engineering docs  
+python -m studio.cli generate --pack both      # Everything
+
+# Use offline mode (no network access)
+python -m studio.cli generate --offline --out ./output
+```
 
 ---
 
-## Project structure (proposed)
+## Example Output Structure
 
+After running generation, you'll get organized documentation:
+
+### **Balanced Pack Output**
 ```
-.
-├── cli/                     # CLI entrypoints (studiogen)
-├── core/                    # Orchestrator, RunContext, AuditLog
-├── schemas/                 # JSON schemas (spec, manifest, contracts)
-├── templates/               # Jinja2 templates (template_set semver)
-├── agents/                  # Content agents (PRD, diagrams, etc.)
-├── contracts/               # Generated schema/contracts for outputs
-├── ci/                      # Workflow stubs, CI helpers
-├── tests/
-│   ├── fixtures/            # Valid/invalid spec samples
-│   └── goldens/             # Golden outputs for determinism
-└── docs/                    # Docs & troubleshooting
+output/
+├── artifact_index.json      # Manifest with SHA-256 hashes
+├── brief.md                 # Project overview
+├── prd.md                   # Product Requirements Document
+├── test_plan.md            # Testing strategy (enhanced by QA Architect)
+├── roadmap.md              # Project timeline and milestones
+└── diagrams/
+    ├── lifecycle.mmd       # E-commerce user journey flow
+    └── sequence.mmd        # Customer→WebApp→API→Database interactions
 ```
 
-Key contracts:
+### **Deep Pack Output**  
+```
+output_deep/
+├── artifact_index.json          # Manifest with integrity tracking
+├── threat_model.md              # STRIDE security analysis
+├── slos.md                      # Service level objectives with error budgets
+├── workflow.yml                 # GitHub Actions CI/CD pipeline
+├── api_contract.schema.json     # API contract definitions
+├── data_contract.schema.json    # Data schema contracts
+├── service_contract.schema.json # Service level agreements
+└── output_bundle.zip           # Complete packaged bundle
+```
 
-* `schemas/source_spec.schema.json`
-* `schemas/artifact_index.schema.json`
-* `contracts/*.schema.json` (Deep Pack)
+### **Project Architecture**
+```
+src/studio/
+├── cli.py                       # CLI interface
+├── app.py                       # Main application facade  
+├── orchestrator.py              # Pipeline execution with budgets/timeouts
+├── spec_builder.py              # Merge idea+decisions into SourceSpec
+├── agents/                      # Content generation agents
+│   └── base.py                  # All 13+ agents (Framer, PRDWriter, etc.)
+├── templates/
+│   ├── balanced/               # Business documentation templates
+│   └── deep/                   # Engineering documentation templates
+└── types.py                    # Core data models and enums
+```
 
 ---
 
@@ -131,36 +209,54 @@ decisions:
 
 ---
 
-## Getting started
+## Real-World Example
 
-### Prereqs
+Here's what the E-commerce platform example generates:
 
-* Python 3.11+ and `pip`/`pipx`
-* Make (optional, for developer targets)
-* GitHub CLI (`gh`) only if you use the repo bootstrap script
+### **PRD Extract** (`prd.md`)
+```markdown
+# Product Requirements Document: E-Commerce Platform
 
-### Install (dev)
+## Executive Summary
+Small businesses need an affordable, scalable e-commerce solution that can handle 
+product management, customer orders, and payment processing without requiring 
+extensive technical expertise
 
-```bash
-git clone https://github.com/Fodezy/Spec-to-Pack.git
-cd Spec-to-Pack
-pip install -e .      # or: pipx runpip spec-to-pack install -e .
-pre-commit install    # if the repo uses pre-commit hooks
+### Context  
+Small to medium business owners who want to sell products online
+
+### Success Metrics
+- User registration and authentication
+- Product catalog with search and filtering  
+- Shopping cart and checkout process
+- Payment processing integration
+- Admin dashboard for business owners
 ```
 
-### Quick validation
+### **Threat Model Extract** (`threat_model.md`)
+```markdown
+## STRIDE Threat Categories
 
-```bash
-studiogen validate examples/source_spec.yaml
+#### Information Disclosure - **Risk Level: High**
+- **Threat:** Unauthorized access to customer payment data
+- **Assets at Risk:** Credit card information, personal data, order history
+- **Mitigations:**
+  - PCI-DSS compliance with end-to-end encryption
+  - Role-based access control for admin functions
+  - Data masking in logs and non-production environments
 ```
 
-### Generate a pack
+### **SLO Extract** (`slos.md`)
+```markdown
+### 1. Availability SLO
+**Target**: 99.9% (8.76 hours downtime per year)
+**Error Budget**: 43.2 minutes per month
 
-```bash
-studiogen generate \
-  --idea examples/idea.yaml \
-  --decisions examples/decisions.yaml \
-  --out ./out
+### 2. Payment Processing SLO  
+**Availability**: 99.9%
+**Latency**: P95 < 3000ms
+**Error Rate**: < 0.2%
+Higher latency tolerance due to external payment provider dependencies.
 ```
 
 ---
@@ -206,16 +302,25 @@ The script is idempotent and appends checklists of child issues to their epics.
 
 ---
 
-## Roadmap (milestones)
+## Development Status & Roadmap
 
-| Milestone                            | Theme                    | Highlights                                                         |
-| ------------------------------------ | ------------------------ | ------------------------------------------------------------------ |
-| **M0 — Foundations & Schemas**       | Scaffolding & validation | Repo layout, CI matrix, schemas, validator, fixtures               |
-| **M1 — Spec Builder & Orchestrator** | Merge/Frame + runtime    | SpecBuilder, Framer-lite, budgets/timeouts, audit                  |
-| **M2 — Balanced Pack v1**            | Agents + templates       | PRD/Test Plan/Diagrams/Roadmap, template harness, E2E & perf gates |
-| **M3 — Engineering Deep Pack**       | Deep docs & contracts    | Generated contracts, CI workflow, packager + manifest integrity    |
-| **M4 — Librarian & RAG (optional)**  | Research w/ provenance   | Librarian, vector store, offline/robots guards                     |
-| **M5 — Hardening & DX**              | Quality & usability      | Mutation/property/golden tests, CLI UX, troubleshooting docs       |
+| Milestone                            | Status | Theme                    | Key Features                                                         |
+| ------------------------------------ | ------ | ------------------------ | -------------------------------------------------------------------- |
+| **M0 — Foundations & Schemas**       | ✅     | Scaffolding & validation | Repo layout, CI matrix, schemas, validator, fixtures               |
+| **M1 — Spec Builder & Orchestrator** | ✅     | Merge/Frame + runtime    | SpecBuilder, Framer-lite, budgets/timeouts, audit                  |
+| **M2 — Balanced Pack v1**            | ✅     | Agents + templates       | PRD/Test Plan/Diagrams/Roadmap, template harness, E2E & perf gates |
+| **M3 — Engineering Deep Pack**       | ✅     | Deep docs & contracts    | Generated contracts, CI workflow, packager + manifest integrity    |
+| **M4 — Librarian & RAG**             | 🔄     | Research w/ provenance   | LibrarianAgent, vector store, offline/robots guards                |
+| **M5 — Hardening & DX**              | 📋     | Quality & usability      | Mutation/property/golden tests, CLI UX, troubleshooting docs       |
+
+### **Recent Achievements (M3 Complete)**
+- ✅ **Deep Pack Generation** - Professional-grade engineering documentation
+- ✅ **Security Documentation** - STRIDE threat models with practical mitigations
+- ✅ **SLO Framework** - Complete service level objectives with error budgets
+- ✅ **CI/CD Pipelines** - Production-ready GitHub Actions workflows
+- ✅ **Contract Schemas** - API, data, and service contract definitions
+- ✅ **YAML Mapping Fixes** - User content now properly populates all templates
+- ✅ **E-commerce Diagrams** - Realistic customer journey and system interactions
 
 ---
 
@@ -232,11 +337,36 @@ Labels you’ll see: `type: epic`, `type: task`, `area:*`, and `milestone:*`.
 
 ## Troubleshooting
 
-* **Validation fails:** run `studiogen validate <spec>` and fix the JSON-pointer errors.
-* **Missing template variables:** harness or generation will fail fast; check template and spec.
-* **Non-deterministic outputs:** ensure timestamps/random seeds are normalized; compare with goldens.
-* **Offline runs still fetch:** confirm `--offline` is set; tests should monkey-patch sockets and fail on any HTTP calls.
-* **Bootstrap script errors:** ensure `gh auth status` is OK; the script uses REST via `gh api`.
+### **Common Issues**
+
+**❌ "unacceptable character #x0000" in YAML files**
+```bash
+# Remove null characters from YAML files
+tr -d '\000' < idea.yaml > idea_clean.yaml
+mv idea_clean.yaml idea.yaml
+```
+
+**❌ Placeholder content instead of your data**
+- Ensure field names match: `problem_statement` (not `problem`), `target_audience` (not `context`)
+- Check nested structure: Use `dials:` section in decisions.yaml
+- Verify enum values: `"business"` → `"balanced"`, `"comprehensive"` → `"full_matrix"`
+
+**❌ Template generation errors**
+```bash  
+# Validate your YAML files first
+python -c "import yaml; print(yaml.safe_load(open('idea.yaml')))"
+python -c "import yaml; print(yaml.safe_load(open('decisions.yaml')))"
+```
+
+**❌ Missing output files**
+- Check output directory permissions
+- Ensure all required YAML fields are present
+- Use `--offline` flag if network issues occur
+
+### **Getting Help**
+- Review the example files in the Quick Start section
+- Check generated `audit.jsonl` for detailed execution logs
+- Validate YAML structure matches the expected format
 
 ---
 
