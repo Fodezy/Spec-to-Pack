@@ -7,14 +7,22 @@ from .adapters.browser import BrowserAdapter, StubBrowserAdapter
 from .adapters.llm import LLMAdapter, StubLLMAdapter
 from .adapters.vector_store import StubVectorStoreAdapter, VectorStoreAdapter
 from .agents.base import (
+    AccessibilityAgent,
+    ADRAgent,
     Agent,
+    CIWorkflowAgent,
+    ContractAgent,
     DiagrammerAgent,
     FramerAgent,
     LibrarianAgent,
+    ObservabilityAgent,
     PackagerAgent,
     PRDWriterAgent,
     QAArchitectAgent,
     RoadmapperAgent,
+    RunbookAgent,
+    SLOAgent,
+    ThreatModelAgent,
 )
 from .artifacts import ArtifactIndex, Blackboard
 from .audit import AuditLog
@@ -65,7 +73,16 @@ class Orchestrator:
             "diagrammer": DiagrammerAgent(),
             "qa_architect": QAArchitectAgent(),
             "roadmapper": RoadmapperAgent(),
-            "packager": PackagerAgent()
+            "packager": PackagerAgent(),
+            # Deep pack agents
+            "threat_model": ThreatModelAgent(),
+            "accessibility": AccessibilityAgent(),
+            "observability": ObservabilityAgent(),
+            "runbook": RunbookAgent(),
+            "slo": SLOAgent(),
+            "adr": ADRAgent(),
+            "ci_workflow": CIWorkflowAgent(),
+            "contract": ContractAgent()
         }
 
         self.step_count = 0
@@ -255,12 +272,47 @@ class Orchestrator:
 
     def _run_deep_pipeline(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard, audit_log: AuditLog) -> None:
         """Run the deep pack pipeline."""
-        # Deep pack would include additional agents for:
-        # - Deep engineering docs
-        # - Contract generation
-        # - CI workflow generation
-        # For now, just log that it would run
-        audit_log.log_event("deep_pipeline", ctx.run_id, "Deep pack pipeline not yet implemented")
+        audit_log.log_event("state_enter", ctx.run_id, "Entering Deep pack pipeline")
+        
+        # Generate threat model documentation
+        audit_log.log_event("state_enter", ctx.run_id, "Generating threat model")
+        self._execute_step("generate_threat_model", ctx, audit_log,
+                          lambda: self._run_agent("threat_model", ctx, spec, blackboard))
+        
+        # Generate accessibility plan
+        audit_log.log_event("state_enter", ctx.run_id, "Generating accessibility plan")
+        self._execute_step("generate_accessibility_plan", ctx, audit_log,
+                          lambda: self._run_agent("accessibility", ctx, spec, blackboard))
+        
+        # Generate observability plan
+        audit_log.log_event("state_enter", ctx.run_id, "Generating observability plan")
+        self._execute_step("generate_observability_plan", ctx, audit_log,
+                          lambda: self._run_agent("observability", ctx, spec, blackboard))
+        
+        # Generate operational runbooks
+        audit_log.log_event("state_enter", ctx.run_id, "Generating operational runbooks")
+        self._execute_step("generate_runbooks", ctx, audit_log,
+                          lambda: self._run_agent("runbook", ctx, spec, blackboard))
+        
+        # Generate SLO documentation
+        audit_log.log_event("state_enter", ctx.run_id, "Generating SLO documentation")
+        self._execute_step("generate_slos", ctx, audit_log,
+                          lambda: self._run_agent("slo", ctx, spec, blackboard))
+        
+        # Generate ADR templates
+        audit_log.log_event("state_enter", ctx.run_id, "Generating ADR templates")
+        self._execute_step("generate_adrs", ctx, audit_log,
+                          lambda: self._run_agent("adr", ctx, spec, blackboard))
+        
+        # Generate CI workflow
+        audit_log.log_event("state_enter", ctx.run_id, "Generating CI workflows")
+        self._execute_step("generate_ci_workflow", ctx, audit_log,
+                          lambda: self._run_agent("ci_workflow", ctx, spec, blackboard))
+        
+        # Generate contract schemas
+        audit_log.log_event("state_enter", ctx.run_id, "Generating contract schemas")
+        self._execute_step("generate_contracts", ctx, audit_log,
+                          lambda: self._run_agent("contract", ctx, spec, blackboard))
 
     def _render_balanced_pack(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> None:
         """Render balanced pack templates."""

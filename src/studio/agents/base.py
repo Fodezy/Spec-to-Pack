@@ -542,6 +542,578 @@ class CriticAgent(Agent):
         )
 
 
+class ThreatModelAgent(Agent):
+    """Agent that generates threat model documentation."""
+
+    def __init__(self):
+        super().__init__("ThreatModelAgent")
+
+    def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
+        """Generate threat model document for deep pack."""
+        import datetime
+        from pathlib import Path
+
+        from ..artifacts import DocumentArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Status
+
+        # Initialize template renderer
+        template_dir = Path(__file__).parent.parent / "templates"
+        renderer = TemplateRenderer(template_dir)
+
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "problem": spec.problem.model_dump() if spec.problem else {},
+            "constraints": spec.constraints.model_dump() if spec.constraints else {},
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            # Load and render template
+            template_path = template_dir / "deep/docs/threat_model.md.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            threat_model_content = renderer.render_string(template_content, template_data)
+            threat_model_path = ctx.out_dir / "threat_model.md"
+            
+            with open(threat_model_path, 'w', encoding='utf-8') as f:
+                f.write(threat_model_content)
+
+            threat_model_artifact = DocumentArtifact(
+                name="threat_model.md",
+                path=threat_model_path,
+                pack=PackType.DEEP,
+                purpose="Security Threat Model and Risk Analysis"
+            )
+
+            return AgentOutput(
+                notes={
+                    "action": "threat_model_generated",
+                    "template_used": "deep/docs/threat_model.md.j2"
+                },
+                artifacts=[threat_model_artifact],
+                status=Status.OK.value
+            )
+
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "threat_model_generation_failed",
+                    "error": str(e)
+                },
+                artifacts=[],
+                status=Status.FAIL.value
+            )
+
+
+class AccessibilityAgent(Agent):
+    """Agent that generates accessibility plan documentation."""
+
+    def __init__(self):
+        super().__init__("AccessibilityAgent")
+
+    def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
+        """Generate accessibility plan document for deep pack."""
+        import datetime
+        from pathlib import Path
+
+        from ..artifacts import DocumentArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Status
+
+        # Initialize template renderer
+        template_dir = Path(__file__).parent.parent / "templates"
+        renderer = TemplateRenderer(template_dir)
+
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "problem": spec.problem.model_dump() if spec.problem else {},
+            "constraints": spec.constraints.model_dump() if spec.constraints else {},
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            # Load and render template
+            template_path = template_dir / "deep/docs/accessibility_plan.md.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            accessibility_content = renderer.render_string(template_content, template_data)
+            accessibility_path = ctx.out_dir / "accessibility_plan.md"
+            
+            with open(accessibility_path, 'w', encoding='utf-8') as f:
+                f.write(accessibility_content)
+
+            accessibility_artifact = DocumentArtifact(
+                name="accessibility_plan.md",
+                path=accessibility_path,
+                pack=PackType.DEEP,
+                purpose="Accessibility Plan and Compliance Strategy"
+            )
+
+            return AgentOutput(
+                notes={
+                    "action": "accessibility_plan_generated",
+                    "template_used": "deep/docs/accessibility_plan.md.j2"
+                },
+                artifacts=[accessibility_artifact],
+                status=Status.OK.value
+            )
+
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "accessibility_plan_generation_failed",
+                    "error": str(e)
+                },
+                artifacts=[],
+                status=Status.FAIL.value
+            )
+
+
+class ObservabilityAgent(Agent):
+    """Agent that generates observability plan documentation."""
+
+    def __init__(self):
+        super().__init__("ObservabilityAgent")
+
+    def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
+        """Generate observability plan document for deep pack."""
+        import datetime
+        from pathlib import Path
+
+        from ..artifacts import DocumentArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Status
+
+        # Initialize template renderer
+        template_dir = Path(__file__).parent.parent / "templates"
+        renderer = TemplateRenderer(template_dir)
+
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "problem": spec.problem.model_dump() if spec.problem else {},
+            "constraints": spec.constraints.model_dump() if spec.constraints else {},
+            "success_metrics": spec.success_metrics if hasattr(spec, 'success_metrics') and spec.success_metrics else [],
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            # Load and render template
+            template_path = template_dir / "deep/docs/observability_plan.md.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            observability_content = renderer.render_string(template_content, template_data)
+            observability_path = ctx.out_dir / "observability_plan.md"
+            
+            with open(observability_path, 'w', encoding='utf-8') as f:
+                f.write(observability_content)
+
+            observability_artifact = DocumentArtifact(
+                name="observability_plan.md",
+                path=observability_path,
+                pack=PackType.DEEP,
+                purpose="Observability, Monitoring, and Alerting Plan"
+            )
+
+            return AgentOutput(
+                notes={
+                    "action": "observability_plan_generated",
+                    "template_used": "deep/docs/observability_plan.md.j2"
+                },
+                artifacts=[observability_artifact],
+                status=Status.OK.value
+            )
+
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "observability_plan_generation_failed",
+                    "error": str(e)
+                },
+                artifacts=[],
+                status=Status.FAIL.value
+            )
+
+
+class RunbookAgent(Agent):
+    """Agent that generates operational runbooks."""
+
+    def __init__(self):
+        super().__init__("RunbookAgent")
+
+    def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
+        """Generate runbook document for deep pack."""
+        import datetime
+        from pathlib import Path
+
+        from ..artifacts import DocumentArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Status
+
+        # Initialize template renderer
+        template_dir = Path(__file__).parent.parent / "templates"
+        renderer = TemplateRenderer(template_dir)
+
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "problem": spec.problem.model_dump() if spec.problem else {},
+            "constraints": spec.constraints.model_dump() if spec.constraints else {},
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            # Load and render template
+            template_path = template_dir / "deep/docs/runbooks.md.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            runbooks_content = renderer.render_string(template_content, template_data)
+            runbooks_path = ctx.out_dir / "runbooks.md"
+            
+            with open(runbooks_path, 'w', encoding='utf-8') as f:
+                f.write(runbooks_content)
+
+            runbooks_artifact = DocumentArtifact(
+                name="runbooks.md",
+                path=runbooks_path,
+                pack=PackType.DEEP,
+                purpose="Operational Runbooks and Troubleshooting Guides"
+            )
+
+            return AgentOutput(
+                notes={
+                    "action": "runbooks_generated",
+                    "template_used": "deep/docs/runbooks.md.j2"
+                },
+                artifacts=[runbooks_artifact],
+                status=Status.OK.value
+            )
+
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "runbooks_generation_failed",
+                    "error": str(e)
+                },
+                artifacts=[],
+                status=Status.FAIL.value
+            )
+
+
+class SLOAgent(Agent):
+    """Agent that generates Service Level Objectives documentation."""
+
+    def __init__(self):
+        super().__init__("SLOAgent")
+
+    def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
+        """Generate SLO document for deep pack."""
+        import datetime
+        from pathlib import Path
+
+        from ..artifacts import DocumentArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Status
+
+        # Initialize template renderer
+        template_dir = Path(__file__).parent.parent / "templates"
+        renderer = TemplateRenderer(template_dir)
+
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "problem": spec.problem.model_dump() if spec.problem else {},
+            "constraints": spec.constraints.model_dump() if spec.constraints else {},
+            "success_metrics": spec.success_metrics if hasattr(spec, 'success_metrics') and spec.success_metrics else [],
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            # Load and render template
+            template_path = template_dir / "deep/docs/slos.md.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            slos_content = renderer.render_string(template_content, template_data)
+            slos_path = ctx.out_dir / "slos.md"
+            
+            with open(slos_path, 'w', encoding='utf-8') as f:
+                f.write(slos_content)
+
+            slos_artifact = DocumentArtifact(
+                name="slos.md",
+                path=slos_path,
+                pack=PackType.DEEP,
+                purpose="Service Level Objectives and Performance Targets"
+            )
+
+            return AgentOutput(
+                notes={
+                    "action": "slos_generated",
+                    "template_used": "deep/docs/slos.md.j2"
+                },
+                artifacts=[slos_artifact],
+                status=Status.OK.value
+            )
+
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "slos_generation_failed",
+                    "error": str(e)
+                },
+                artifacts=[],
+                status=Status.FAIL.value
+            )
+
+
+class ADRAgent(Agent):
+    """Agent that generates Architecture Decision Records template."""
+
+    def __init__(self):
+        super().__init__("ADRAgent")
+
+    def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
+        """Generate ADR template document for deep pack."""
+        import datetime
+        from pathlib import Path
+
+        from ..artifacts import DocumentArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Status
+
+        # Initialize template renderer
+        template_dir = Path(__file__).parent.parent / "templates"
+        renderer = TemplateRenderer(template_dir)
+
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "problem": spec.problem.model_dump() if spec.problem else {},
+            "constraints": spec.constraints.model_dump() if spec.constraints else {},
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            # Load and render template
+            template_path = template_dir / "deep/docs/adrs/template.md.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            adr_content = renderer.render_string(template_content, template_data)
+            adr_path = ctx.out_dir / "adrs.md"
+            
+            with open(adr_path, 'w', encoding='utf-8') as f:
+                f.write(adr_content)
+
+            adr_artifact = DocumentArtifact(
+                name="adrs.md",
+                path=adr_path,
+                pack=PackType.DEEP,
+                purpose="Architecture Decision Records Template and Examples"
+            )
+
+            return AgentOutput(
+                notes={
+                    "action": "adr_template_generated",
+                    "template_used": "deep/docs/adrs/template.md.j2"
+                },
+                artifacts=[adr_artifact],
+                status=Status.OK.value
+            )
+
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "adr_generation_failed",
+                    "error": str(e)
+                },
+                artifacts=[],
+                status=Status.FAIL.value
+            )
+
+
+class CIWorkflowAgent(Agent):
+    """Agent that generates CI/CD workflow files."""
+
+    def __init__(self):
+        super().__init__("CIWorkflowAgent")
+
+    def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
+        """Generate CI workflow file for deep pack."""
+        import datetime
+        from pathlib import Path
+
+        from ..artifacts import CIArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Status
+
+        # Initialize template renderer
+        template_dir = Path(__file__).parent.parent / "templates"
+        renderer = TemplateRenderer(template_dir)
+
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "constraints": spec.constraints.model_dump() if spec.constraints else {},
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
+        }
+
+        try:
+            # Load and render template
+            template_path = template_dir / "deep/ci/workflow.yml.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            workflow_content = renderer.render_string(template_content, template_data)
+            workflow_path = ctx.out_dir / "workflow.yml"
+            
+            with open(workflow_path, 'w', encoding='utf-8') as f:
+                f.write(workflow_content)
+
+            workflow_artifact = CIArtifact(
+                name="workflow.yml",
+                path=workflow_path,
+                pack=PackType.DEEP,
+                purpose="CI/CD Pipeline Configuration"
+            )
+
+            return AgentOutput(
+                notes={
+                    "action": "ci_workflow_generated",
+                    "template_used": "deep/ci/workflow.yml.j2"
+                },
+                artifacts=[workflow_artifact],
+                status=Status.OK.value
+            )
+
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "ci_workflow_generation_failed",
+                    "error": str(e)
+                },
+                artifacts=[],
+                status=Status.FAIL.value
+            )
+
+
+class ContractAgent(Agent):
+    """Agent that generates contract schema files."""
+
+    def __init__(self):
+        super().__init__("ContractAgent")
+
+    def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
+        """Generate contract schema files for deep pack."""
+        import datetime
+        from pathlib import Path
+
+        from ..artifacts import SchemaArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Status
+
+        # Initialize template renderer
+        template_dir = Path(__file__).parent.parent / "templates"
+        renderer = TemplateRenderer(template_dir)
+
+        # Prepare template data
+        template_data = {
+            "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
+            "generated_at": datetime.datetime.utcnow().isoformat() + "Z"
+        }
+
+        artifacts = []
+        try:
+            # Generate API contract schema
+            template_path = template_dir / "deep/contracts/api_contract.schema.json.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            api_contract_content = renderer.render_string(template_content, template_data)
+            api_contract_path = ctx.out_dir / "api_contract.schema.json"
+            
+            with open(api_contract_path, 'w', encoding='utf-8') as f:
+                f.write(api_contract_content)
+
+            api_contract_artifact = SchemaArtifact(
+                name="api_contract.schema.json",
+                path=api_contract_path,
+                pack=PackType.DEEP,
+                purpose="API Contract Schema Definition"
+            )
+            artifacts.append(api_contract_artifact)
+
+            # Generate Data contract schema
+            template_path = template_dir / "deep/contracts/data_contract.schema.json.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            data_contract_content = renderer.render_string(template_content, template_data)
+            data_contract_path = ctx.out_dir / "data_contract.schema.json"
+            
+            with open(data_contract_path, 'w', encoding='utf-8') as f:
+                f.write(data_contract_content)
+
+            data_contract_artifact = SchemaArtifact(
+                name="data_contract.schema.json",
+                path=data_contract_path,
+                pack=PackType.DEEP,
+                purpose="Data Contract Schema Definition"
+            )
+            artifacts.append(data_contract_artifact)
+
+            # Generate Service contract schema
+            template_path = template_dir / "deep/contracts/service_contract.schema.json.j2"
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            service_contract_content = renderer.render_string(template_content, template_data)
+            service_contract_path = ctx.out_dir / "service_contract.schema.json"
+            
+            with open(service_contract_path, 'w', encoding='utf-8') as f:
+                f.write(service_contract_content)
+
+            service_contract_artifact = SchemaArtifact(
+                name="service_contract.schema.json",
+                path=service_contract_path,
+                pack=PackType.DEEP,
+                purpose="Service Contract Schema Definition"
+            )
+            artifacts.append(service_contract_artifact)
+
+            return AgentOutput(
+                notes={
+                    "action": "contract_schemas_generated",
+                    "templates_used": [
+                        "deep/contracts/api_contract.schema.json.j2",
+                        "deep/contracts/data_contract.schema.json.j2",
+                        "deep/contracts/service_contract.schema.json.j2"
+                    ],
+                    "schemas_created": len(artifacts)
+                },
+                artifacts=artifacts,
+                status=Status.OK.value
+            )
+
+        except Exception as e:
+            return AgentOutput(
+                notes={
+                    "action": "contract_generation_failed",
+                    "error": str(e)
+                },
+                artifacts=artifacts,  # Return any artifacts that were successfully created
+                status=Status.FAIL.value
+            )
+
+
 class PackagerAgent(Agent):
     """Agent that packages outputs into bundles."""
 
@@ -550,19 +1122,45 @@ class PackagerAgent(Agent):
 
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Package artifacts into zip bundles."""
+        import zipfile
         from ..artifacts import ZipArtifact
-        from ..types import PackType
+        from ..types import PackType, Status
 
         if spec.export.bundle:
+            zip_path = ctx.out_dir / "output_bundle.zip"
+            
+            # Calculate hashes for all artifacts before bundling
+            for artifact in blackboard.artifacts:
+                if artifact.path.exists() and artifact.sha256_hash is None:
+                    artifact.calculate_hash()
+            
+            # Create the actual zip file with all blackboard artifacts
+            created_files = 0
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for artifact in blackboard.artifacts:
+                    if artifact.path.exists():
+                        # Use relative path within zip for clean structure
+                        arcname = artifact.path.relative_to(ctx.out_dir)
+                        zip_file.write(artifact.path, arcname=arcname)
+                        created_files += 1
+            
             zip_artifact = ZipArtifact(
                 name="output_bundle.zip",
-                path=ctx.out_dir / "output_bundle.zip",
+                path=zip_path,
                 pack=PackType.BALANCED,
                 purpose="Bundled Output Package"
             )
+            
+            # Calculate hash for the zip file itself
+            zip_artifact.calculate_hash()
 
             return AgentOutput(
-                notes={"action": "bundle_created", "artifact_count": len(blackboard.artifacts)},
+                notes={
+                    "action": "bundle_created", 
+                    "artifact_count": len(blackboard.artifacts),
+                    "files_bundled": created_files,
+                    "zip_path": str(zip_path)
+                },
                 artifacts=[zip_artifact],
                 status=Status.OK.value
             )

@@ -1,0 +1,599 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://{{ meta.name | lower }}.com/schemas/service-contract.json",
+  "title": "{{ meta.name }} Service Contract Schema",
+  "description": "Contract definition for {{ meta.name }} service interfaces and behaviors",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of the service contract"
+        },
+        "name": {
+          "type": "string",
+          "description": "Service name"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when contract was generated"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Team or individual responsible for this service"
+        }
+      },
+      "required": ["version", "name", "generated_at", "owner"],
+      "additionalProperties": false
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["http", "grpc", "graphql", "websocket", "message_queue"],
+          "description": "Service communication protocol"
+        },
+        "base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for HTTP services"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Service port number"
+        },
+        "health_check": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "description": "Health check endpoint path"
+            },
+            "method": {
+              "type": "string",
+              "enum": ["GET", "POST", "HEAD"],
+              "default": "GET"
+            },
+            "expected_status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 299,
+              "default": 200
+            },
+            "timeout": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "default": "5s"
+            }
+          },
+          "required": ["endpoint"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "interfaces": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/interface"
+      },
+      "description": "Service interfaces/operations"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      },
+      "description": "External service dependencies"
+    },
+    "sla": {
+      "type": "object",
+      "properties": {
+        "availability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Service availability percentage (e.g., 99.9)"
+        },
+        "response_time": {
+          "type": "object",
+          "properties": {
+            "p50": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "description": "50th percentile response time"
+            },
+            "p90": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "description": "90th percentile response time"
+            },
+            "p99": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "description": "99th percentile response time"
+            }
+          },
+          "additionalProperties": false
+        },
+        "throughput": {
+          "type": "object",
+          "properties": {
+            "requests_per_second": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Expected requests per second capacity"
+            },
+            "burst_capacity": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Peak burst handling capacity"
+            }
+          },
+          "additionalProperties": false
+        },
+        "error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Maximum acceptable error rate percentage"
+        }
+      },
+      "additionalProperties": false
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/metric"
+          },
+          "description": "Service metrics to monitor"
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alert"
+          },
+          "description": "Alert configurations"
+        },
+        "logs": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "string",
+              "enum": ["DEBUG", "INFO", "WARN", "ERROR", "FATAL"],
+              "default": "INFO"
+            },
+            "format": {
+              "type": "string",
+              "enum": ["json", "structured", "plain"],
+              "default": "json"
+            },
+            "retention": {
+              "type": "string",
+              "pattern": "^\\d+[dMy]$",
+              "description": "Log retention period (e.g., 30d, 3M, 1y)"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "deployment": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["blue_green", "rolling", "canary", "recreate"],
+          "description": "Deployment strategy"
+        },
+        "replicas": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum number of replicas"
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of replicas"
+            },
+            "target": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Target number of replicas"
+            }
+          },
+          "required": ["min", "max"],
+          "additionalProperties": false
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "$ref": "#/$defs/resource_requirements"
+            },
+            "limits": {
+              "$ref": "#/$defs/resource_requirements"
+            }
+          },
+          "additionalProperties": false
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["development", "staging", "production"]
+          },
+          "description": "Deployment environments"
+        }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "authentication": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "boolean",
+              "default": true
+            },
+            "methods": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["bearer", "api_key", "oauth2", "basic", "mutual_tls"]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "authorization": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string",
+              "enum": ["rbac", "abac", "simple"],
+              "description": "Authorization model"
+            },
+            "roles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "encryption": {
+          "type": "object",
+          "properties": {
+            "in_transit": {
+              "type": "boolean",
+              "default": true,
+              "description": "TLS/SSL encryption for data in transit"
+            },
+            "at_rest": {
+              "type": "boolean",
+              "default": true,
+              "description": "Encryption for stored data"
+            },
+            "algorithms": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["AES-256", "RSA-2048", "ECDSA", "ChaCha20"]
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["meta", "service", "interfaces"],
+  "additionalProperties": false,
+  "$defs": {
+    "interface": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Interface/operation name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Interface description"
+        },
+        "protocol": {
+          "type": "string",
+          "enum": ["http", "grpc", "graphql", "websocket", "message"],
+          "description": "Communication protocol for this interface"
+        },
+        "input": {
+          "$ref": "#/$defs/interface_schema",
+          "description": "Input schema"
+        },
+        "output": {
+          "$ref": "#/$defs/interface_schema",
+          "description": "Output schema"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/error_definition"
+          },
+          "description": "Possible error responses"
+        },
+        "idempotent": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether operation is idempotent"
+        },
+        "rate_limit": {
+          "type": "object",
+          "properties": {
+            "requests_per_minute": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "burst_limit": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["name", "protocol"],
+      "additionalProperties": false
+    },
+    "interface_schema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["object", "array", "string", "number", "boolean", "null"]
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/property_definition"
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "description": "Example value"
+        }
+      },
+      "additionalProperties": false
+    },
+    "property_definition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["object", "array", "string", "number", "integer", "boolean", "null"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "enum": {
+          "type": "array"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "items": {
+          "$ref": "#/$defs/property_definition"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "error_definition": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message template"
+        },
+        "http_status": {
+          "type": "integer",
+          "minimum": 400,
+          "maximum": 599,
+          "description": "HTTP status code for HTTP services"
+        },
+        "retryable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether error is retryable"
+        }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    },
+    "dependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Dependency service name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["internal", "external", "database", "cache", "message_queue"],
+          "description": "Dependency type"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Service endpoint"
+        },
+        "version": {
+          "type": "string",
+          "description": "Required service version"
+        },
+        "criticality": {
+          "type": "string",
+          "enum": ["critical", "important", "optional"],
+          "description": "Dependency criticality"
+        },
+        "circuit_breaker": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "failure_threshold": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 5
+            },
+            "timeout": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(ms|s)$",
+              "default": "30s"
+            }
+          },
+          "additionalProperties": false
+        },
+        "fallback": {
+          "type": "object",
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "enum": ["cache", "default_value", "alternative_service", "fail_fast"]
+            },
+            "configuration": {
+              "type": "object",
+              "description": "Fallback configuration"
+            }
+          },
+          "required": ["strategy"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["name", "type", "criticality"],
+      "additionalProperties": false
+    },
+    "metric": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Metric name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["counter", "gauge", "histogram", "timer"],
+          "description": "Metric type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Metric description"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Metric unit (e.g., requests, bytes, seconds)"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Metric labels/dimensions"
+        }
+      },
+      "required": ["name", "type"],
+      "additionalProperties": false
+    },
+    "alert": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Alert name"
+        },
+        "condition": {
+          "type": "string",
+          "description": "Alert trigger condition"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "critical"],
+          "description": "Alert severity"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(s|m|h)$",
+          "description": "Duration before alert fires"
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["email", "slack", "pager", "webhook"]
+          }
+        }
+      },
+      "required": ["name", "condition", "severity"],
+      "additionalProperties": false
+    },
+    "resource_requirements": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(m|$)",
+          "description": "CPU requirement (e.g., 100m, 1.5)"
+        },
+        "memory": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(Mi|Gi|Ti)$",
+          "description": "Memory requirement (e.g., 256Mi, 1Gi)"
+        },
+        "storage": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(Mi|Gi|Ti)$",
+          "description": "Storage requirement (e.g., 1Gi, 10Gi)"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

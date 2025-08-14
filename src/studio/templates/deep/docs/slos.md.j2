@@ -1,0 +1,343 @@
+# Service Level Objectives: {{ meta.name }}
+
+**Version:** {{ meta.version }}
+**Generated:** {{ generated_at }}
+**Template:** deep-1.0.0
+
+## Overview
+
+Service Level Objectives (SLOs) define the target level of reliability and performance for {{ meta.name }}.
+
+{{ problem.statement }}
+
+## SLO Framework
+
+### Service Level Indicators (SLIs)
+Quantitative measures of service behavior
+
+### Service Level Objectives (SLOs)
+Target values for SLIs over a period
+
+### Service Level Agreements (SLAs)
+External commitments based on SLOs with penalties
+
+### Error Budgets
+Amount of unreliability allowed (100% - SLO%)
+
+## Core SLOs
+
+### 1. Availability SLO
+**Definition**: Percentage of successful requests over time
+
+**SLI Measurement**:
+```
+Availability = (Successful Requests / Total Requests) × 100%
+```
+
+**Target**: 99.9% (8.76 hours downtime per year)
+
+**Time Window**: 30 days
+
+**Error Budget**: 0.1% = 43.2 minutes per month
+
+**Measurement Method**:
+- HTTP status codes 2xx, 3xx = Success
+- HTTP status codes 4xx, 5xx = Failure
+- Network timeouts = Failure
+
+---
+
+### 2. Latency SLO
+**Definition**: Response time for user-facing requests
+
+**SLI Measurement**:
+```
+Latency = Time from request start to response completion
+```
+
+**Targets**:
+- **P90**: < 500ms (90% of requests faster than 500ms)
+- **P99**: < 2000ms (99% of requests faster than 2s)
+
+**Time Window**: 7 days
+
+**Error Budget**: 
+- P90: 10% of requests may exceed 500ms
+- P99: 1% of requests may exceed 2000ms
+
+**Measurement Method**:
+- End-to-end request timing
+- Exclude requests > 30s (timeouts)
+- Measure at load balancer level
+
+---
+
+### 3. Error Rate SLO
+**Definition**: Percentage of requests resulting in errors
+
+**SLI Measurement**:
+```
+Error Rate = (Failed Requests / Total Requests) × 100%
+```
+
+**Target**: < 0.5%
+
+**Time Window**: 24 hours
+
+**Error Budget**: 0.5% of all requests may fail
+
+**Error Classification**:
+- **User Errors (4xx)**: Not counted against SLO
+- **System Errors (5xx)**: Counted against SLO
+- **Timeouts**: Counted against SLO
+
+---
+
+### 4. Throughput SLO
+**Definition**: System capacity to handle request volume
+
+**SLI Measurement**:
+```
+Throughput = Requests processed per second
+```
+
+**Target**: Support up to 1,000 RPS
+
+**Time Window**: Peak hours (9 AM - 6 PM local time)
+
+**Measurement Method**:
+- Successful request processing rate
+- Measured at application level
+- Averaged over 1-minute intervals
+
+---
+
+## Feature-Specific SLOs
+
+### Authentication Service
+**Availability**: 99.95%
+**Latency**: P99 < 1000ms
+**Error Rate**: < 0.1%
+
+Critical because auth failures block all user access.
+
+### Payment Processing
+**Availability**: 99.9%
+**Latency**: P95 < 3000ms
+**Error Rate**: < 0.2%
+
+Higher latency tolerance due to external payment provider dependencies.
+
+### Content Delivery
+**Availability**: 99.5%
+**Latency**: P90 < 200ms
+**Error Rate**: < 1%
+
+Uses CDN with multiple fallbacks, more tolerance acceptable.
+
+### Background Jobs
+**Processing Time**: 95% of jobs complete within 1 hour
+**Failure Rate**: < 2%
+**Backlog**: No job queue > 1000 items
+
+## SLO Measurement & Monitoring
+
+### Data Sources
+```yaml
+Primary Metrics Source:
+  - Application Performance Monitoring (APM)
+  - Load Balancer logs
+  - Application logs
+  - Synthetic monitoring
+
+Secondary Sources:
+  - User experience monitoring
+  - Third-party monitoring services
+  - Customer support metrics
+```
+
+### Dashboards
+- **Executive Dashboard**: High-level SLO status
+- **Operations Dashboard**: Detailed SLI trends
+- **Error Budget Dashboard**: Burn rate and remaining budget
+
+### Alerting Thresholds
+```yaml
+Error Budget Burn Alerts:
+  - 10% budget consumed in 1 hour: Page immediately
+  - 25% budget consumed in 6 hours: Alert team
+  - 50% budget consumed in 24 hours: Warning
+  
+SLI Threshold Alerts:
+  - Availability < 99%: Page immediately
+  - P99 latency > 5s: Page immediately  
+  - Error rate > 5%: Page immediately
+```
+
+## Error Budget Policy
+
+### Budget Allocation
+**Monthly Error Budget**: Based on 99.9% availability
+- Total minutes: 43,200
+- Error budget: 43.2 minutes
+
+### Budget Burn Rate
+- **Fast burn** (> 10% in 1 hour): Emergency response
+- **Medium burn** (> 25% in 6 hours): Investigate and mitigate
+- **Slow burn** (steady consumption): Monitor and optimize
+
+### Budget Actions
+```yaml
+Budget Remaining > 50%:
+  - Normal development velocity
+  - Deploy new features
+  - Conduct experiments
+
+Budget Remaining 10-50%:
+  - Focus on reliability
+  - Reduce deployment frequency
+  - Prioritize bug fixes
+
+Budget Remaining < 10%:
+  - Freeze non-critical changes
+  - All-hands reliability focus
+  - Defer feature releases
+```
+
+## SLO Review Process
+
+### Weekly Reviews
+- SLO performance vs targets
+- Error budget consumption
+- Trend analysis
+- Action item progress
+
+### Monthly Reviews
+- SLO target evaluation
+- Budget policy effectiveness
+- Customer impact assessment
+- Process improvements
+
+### Quarterly Reviews
+- SLO target adjustments
+- New SLO identification
+- Tool and process evolution
+- Stakeholder feedback
+
+## Incident Impact on SLOs
+
+### Severity Classification
+```yaml
+SEV-1 (Critical):
+  - Complete service outage
+  - Significant SLO impact
+  - Immediate escalation
+
+SEV-2 (Major):
+  - Partial service degradation
+  - SLO at risk
+  - Business hours escalation
+
+SEV-3 (Minor):
+  - Minimal user impact
+  - SLO buffer consumption
+  - Standard response
+```
+
+### Post-Incident SLO Analysis
+1. Calculate SLO impact duration
+2. Assess error budget consumption
+3. Evaluate alerting effectiveness
+4. Update SLOs if needed
+
+## SLA Commitments
+
+### Customer-Facing SLAs
+Based on SLOs with additional buffer:
+
+**Service Availability**: 99.5% uptime
+- Credits: 10% monthly fee if < 99.5%
+- Credits: 25% monthly fee if < 99%
+
+**Response Time**: P95 < 1 second
+- Performance reports available monthly
+- No penalties, but reputation impact
+
+### Internal SLAs
+**Support Response Times**:
+- Critical issues: 1 hour
+- Major issues: 4 hours  
+- Minor issues: 24 hours
+
+## Continuous Improvement
+
+### SLO Evolution
+- Start with loose SLOs, tighten over time
+- Add new SLOs as system matures
+- Remove SLOs that don't drive value
+
+### Automation
+- Automated SLO reporting
+- Error budget alerts
+- Policy enforcement
+- Trend analysis
+
+### Culture & Training
+- SLO awareness training
+- Incident response training
+- Error budget decision making
+- Customer empathy building
+
+## Tools & Implementation
+
+### Monitoring Stack
+```yaml
+Metrics Collection:
+  - Prometheus + Grafana
+  - DataDog / New Relic
+  - Custom application metrics
+
+SLO Tracking:
+  - Grafana SLO dashboards
+  - Custom SLO tracking service
+  - Error budget calculators
+
+Alerting:
+  - PagerDuty for critical alerts
+  - Slack for team notifications
+  - Email for management updates
+```
+
+### Code Examples
+```python
+# SLO measurement example
+def calculate_availability_slo(start_time, end_time):
+    total_requests = get_request_count(start_time, end_time)
+    successful_requests = get_successful_requests(start_time, end_time)
+    
+    availability = (successful_requests / total_requests) * 100
+    slo_target = 99.9
+    
+    return {
+        'availability': availability,
+        'slo_met': availability >= slo_target,
+        'error_budget_consumed': (100 - availability) / (100 - slo_target)
+    }
+```
+
+## Success Metrics
+
+### SLO Health Indicators
+- **SLO Achievement Rate**: Percentage of SLOs met monthly
+- **Error Budget Utilization**: Healthy burn rate patterns
+- **Mean Time to Recovery**: Incident response effectiveness
+- **Customer Satisfaction**: Correlation with SLO performance
+
+### Business Impact
+- Customer retention rates
+- Support ticket volume
+- Revenue impact of outages
+- Competitive differentiation
+
+---
+*SLOs should be living documents that evolve with the system and business needs. Regular review and adjustment ensure they remain meaningful and achievable.*
