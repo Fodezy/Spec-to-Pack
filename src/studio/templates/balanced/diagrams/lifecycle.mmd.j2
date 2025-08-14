@@ -3,26 +3,31 @@
 %% Template: balanced-1.0.0
 
 graph TD
-    A[Start] --> B{Initialize System}
-    B -->|Success| C[Ready State]
-    B -->|Failure| E[Error State]
+    A[User Access] --> B{Authenticate User}
+    B -->|Success| C[Browse Products]
+    B -->|Failure| E[Access Denied]
     
-    C --> D{Process Request}
-    D -->|Valid| F[Process Data]
-    D -->|Invalid| G[Validation Error]
+    C --> D{Select Product}
+    D -->|Add to Cart| F[Cart Management]
+    D -->|Search/Filter| G[Product Search]
     
-    F --> H{Execute Operation}
-    H -->|Success| I[Success Response]
-    H -->|Failure| J[Operation Error]
+    F --> H{Checkout Process}
+    H -->|Valid| I[Payment Processing]
+    H -->|Invalid| J[Validation Error]
     
-    I --> K[Log Success]
-    J --> L[Log Error]
-    G --> L
-    E --> L
+    I --> K{Payment Result}
+    K -->|Success| L[Order Confirmed]
+    K -->|Failed| M[Payment Error]
     
-    K --> M[Complete]
-    L --> N[Handle Error]
-    N --> M
+    G --> D
+    J --> F
+    M --> H
+    
+    L --> N[Order Fulfillment]
+    N --> O[Complete]
+    
+    E --> P[Login Retry]
+    P --> B
     
     %% Style classes
     classDef startEnd fill:#90EE90,stroke:#006400,stroke-width:2px
@@ -30,14 +35,16 @@ graph TD
     classDef decision fill:#FFE4B5,stroke:#DAA520,stroke-width:2px
     classDef error fill:#FFB6C1,stroke:#DC143C,stroke-width:2px
     
-    class A,M startEnd
-    class C,F,I,K process
-    class B,D,H decision
-    class E,G,J,L,N error
+    class A,O startEnd
+    class C,F,I,L,N process
+    class B,D,H,K decision
+    class E,J,M,P error
 
-%% State descriptions
-%% Start: System initialization
-%% Ready State: System ready to process requests
-%% Process Request: Validate and route incoming requests
-%% Execute Operation: Core business logic execution
-%% Success/Error paths: Handle outcomes appropriately
+%% E-commerce Platform States
+%% User Access: Customer enters the platform
+%% Authentication: Login/registration process
+%% Browse Products: Product catalog exploration
+%% Cart Management: Shopping cart operations
+%% Checkout Process: Order review and submission
+%% Payment Processing: Payment gateway integration
+%% Order Fulfillment: Order processing and delivery

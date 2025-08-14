@@ -12,6 +12,7 @@ from .types import (
     Meta,
     Problem,
     SourceSpec,
+    SuccessMetrics,
     TestDepth,
 )
 
@@ -43,12 +44,22 @@ class SpecBuilder:
 
         # Map decision data to Dials
         dials_data = {}
-        if "audience_mode" in decisions_data:
-            dials_data["audience_mode"] = AudienceMode(decisions_data["audience_mode"])
-        if "development_flow" in decisions_data:
-            dials_data["development_flow"] = DevelopmentFlow(decisions_data["development_flow"])
-        if "test_depth" in decisions_data:
-            dials_data["test_depth"] = TestDepth(decisions_data["test_depth"])
+        # Handle nested dials structure
+        dials_section = decisions_data.get("dials", decisions_data)
+        if "audience_mode" in dials_section:
+            # Map 'business' to 'balanced'
+            audience_value = dials_section["audience_mode"]
+            if audience_value == "business":
+                audience_value = "balanced"
+            dials_data["audience_mode"] = AudienceMode(audience_value)
+        if "development_flow" in dials_section:
+            dials_data["development_flow"] = DevelopmentFlow(dials_section["development_flow"])
+        if "test_depth" in dials_section:
+            # Map 'comprehensive' to 'full_matrix' 
+            test_depth_value = dials_section["test_depth"]
+            if test_depth_value == "comprehensive":
+                test_depth_value = "full_matrix"
+            dials_data["test_depth"] = TestDepth(test_depth_value)
 
         # Build spec from merged data
         spec_data = {
@@ -58,8 +69,11 @@ class SpecBuilder:
                 description=idea_data.get("description")
             ),
             "problem": Problem(
-                statement=idea_data.get("problem", "Placeholder problem statement"),
-                context=idea_data.get("context")
+                statement=idea_data.get("problem_statement", "Placeholder problem statement"),
+                context=idea_data.get("target_audience")
+            ),
+            "success_metrics": SuccessMetrics(
+                metrics=idea_data.get("key_features", [])
             ),
             "constraints": Constraints(
                 offline_ok=decisions_data.get("offline", True),
