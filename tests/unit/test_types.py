@@ -1,9 +1,17 @@
 """Unit tests for core types."""
 
 import pytest
+
 from studio.types import (
-    SourceSpec, Meta, Problem, Constraints, Dials,
-    AudienceMode, PackType, Status, ValidationResult, ValidationError
+    AudienceMode,
+    Dials,
+    Meta,
+    PackType,
+    Problem,
+    SourceSpec,
+    Status,
+    ValidationError,
+    ValidationResult,
 )
 
 
@@ -11,9 +19,9 @@ def test_source_spec_creation():
     """Test SourceSpec creation with required fields."""
     meta = Meta(name="Test Spec", version="1.0.0")
     problem = Problem(statement="Test problem statement")
-    
+
     spec = SourceSpec(meta=meta, problem=problem)
-    
+
     assert spec.meta.name == "Test Spec"
     assert spec.problem.statement == "Test problem statement"
     assert spec.is_valid()
@@ -32,24 +40,24 @@ def test_source_spec_with_all_fields():
         "operations": {"ci_cd": True, "monitoring": True},
         "export": {"formats": ["markdown", "pdf"], "bundle": True}
     }
-    
+
     spec = SourceSpec(**spec_data)
-    
+
     assert spec.meta.description == "A complete spec"
     assert spec.problem.context == "Business context"
     assert spec.constraints.budget_tokens == 100000
     assert len(spec.success_metrics.metrics) == 2
-    assert spec.export.bundle == True
+    assert spec.export.bundle
 
 
 def test_dials_creation():
     """Test Dials creation with enums."""
     dials = Dials(
         audience_mode=AudienceMode.DEEP,
-        development_flow="agile", 
+        development_flow="agile",
         test_depth="full_matrix"
     )
-    
+
     assert dials.audience_mode == AudienceMode.DEEP
     assert dials.development_flow.value == "agile"
     assert dials.test_depth.value == "full_matrix"
@@ -61,9 +69,9 @@ def test_validation_result():
         ValidationError(json_pointer="/meta/name", message="Name is required"),
         ValidationError(json_pointer="/problem/statement", message="Statement too short")
     ]
-    
+
     result = ValidationResult(ok=False, errors=errors)
-    
+
     assert not result.ok
     assert len(result.errors) == 2
     assert result.errors[0].json_pointer == "/meta/name"
@@ -81,7 +89,7 @@ def test_spec_model_validation():
     # This should raise ValidationError due to missing required fields
     with pytest.raises(Exception):
         SourceSpec()
-    
+
     # This should work with minimal required fields
     spec = SourceSpec(
         meta=Meta(name="Test", version="1.0.0"),

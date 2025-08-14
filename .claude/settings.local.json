@@ -9,7 +9,8 @@
       "Bash(gh run view:*)",
       "Bash(mkdir:*)",
       "Bash(git add:*)",
-      "Bash(dir testsfixturesaudit.jsonl)"
+      "Bash(dir testsfixturesaudit.jsonl)",
+      "Bash(gh milestone:*)"
     ],
     "deny": [],
     "ask": []

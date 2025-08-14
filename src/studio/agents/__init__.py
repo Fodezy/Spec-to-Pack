@@ -1,8 +1,16 @@
 """Content generation agents."""
 
 from .base import (
-    Agent, FramerAgent, LibrarianAgent, SlicerAgent, PRDWriterAgent, 
-    DiagrammerAgent, QAArchitectAgent, RoadmapperAgent, CriticAgent, PackagerAgent
+    Agent,
+    CriticAgent,
+    DiagrammerAgent,
+    FramerAgent,
+    LibrarianAgent,
+    PackagerAgent,
+    PRDWriterAgent,
+    QAArchitectAgent,
+    RoadmapperAgent,
+    SlicerAgent,
 )
 
 __all__ = [

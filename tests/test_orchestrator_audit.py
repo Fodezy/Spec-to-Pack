@@ -1,10 +1,10 @@
 """Test orchestrator audit logging features."""
 
 import json
-from pathlib import Path
 from uuid import uuid4
+
 from src.studio.orchestrator import Orchestrator
-from src.studio.types import RunContext, SourceSpec, Meta, Problem, PackType, Dials
+from src.studio.types import Dials, Meta, PackType, Problem, RunContext, SourceSpec
 
 
 def test_orchestrator_audit_enrichment(tmp_path):
@@ -14,7 +14,7 @@ def test_orchestrator_audit_enrichment(tmp_path):
         meta=Meta(name="Test Spec", version="1.0.0"),
         problem=Problem(statement="Test problem statement")
     )
-    
+
     # Create run context
     ctx = RunContext(
         run_id=uuid4(),
@@ -22,25 +22,25 @@ def test_orchestrator_audit_enrichment(tmp_path):
         dials=Dials(),
         out_dir=tmp_path
     )
-    
+
     # Create orchestrator with small budget for testing
     orch = Orchestrator(step_budget=5, timeout_per_step_sec=30)
-    
+
     # Run pipeline
     try:
-        result = orch.run(ctx, spec, PackType.BALANCED)
-        
+        orch.run(ctx, spec, PackType.BALANCED)
+
         # Check audit log was created
         audit_file = tmp_path / "audit.jsonl"
         assert audit_file.exists()
-        
+
         # Parse audit log
         events = []
         with open(audit_file) as f:
             for line in f:
                 if line.strip():
                     events.append(json.loads(line))
-        
+
         # Verify enriched fields are present
         assert len(events) > 0
         for event in events:
@@ -52,16 +52,16 @@ def test_orchestrator_audit_enrichment(tmp_path):
             assert "note" in event
             assert "level" in event
             # duration_ms should be present for completed steps
-            
+
         # Verify pipeline start event
         start_events = [e for e in events if e["event_type"] == "pipeline_start"]
         assert len(start_events) == 1
         assert start_events[0]["stage"] == "pipeline"
         assert start_events[0]["event"] == "start"
-        
+
         print(f"✓ Generated {len(events)} audit events with enriched fields")
-        
-    except Exception as e:
+
+    except Exception:
         # Even if pipeline fails, audit log should exist with error details
         audit_file = tmp_path / "audit.jsonl"
         if audit_file.exists():

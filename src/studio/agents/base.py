@@ -1,19 +1,18 @@
 """Base agent interface and implementations."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
 
-from ..types import SourceSpec, RunContext, Status
-from ..artifacts import Blackboard, AgentOutput
+from ..artifacts import AgentOutput, Blackboard
+from ..types import RunContext, SourceSpec, Status
 
 
 class Agent(ABC):
     """Base agent interface."""
-    
+
     def __init__(self, name: str):
         """Initialize agent with name."""
         self.name = name
-    
+
     @abstractmethod
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Run the agent with given context, spec, and blackboard."""
@@ -22,28 +21,28 @@ class Agent(ABC):
 
 class FramerAgent(Agent):
     """Agent that frames and fills missing spec fields."""
-    
+
     def __init__(self):
         super().__init__("FramerAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Frame the spec by filling missing mandatory fields."""
         filled_fields = []
         overrides = []
-        
+
         # Create a mutable copy of the spec data
         spec_dict = spec.model_dump()
-        
+
         # Check and fill missing meta fields
         if not spec_dict.get("meta", {}).get("description"):
             spec_dict["meta"]["description"] = "Generated description - needs manual review"
             filled_fields.append("meta.description")
-        
+
         # Check and fill missing problem context
         if not spec_dict.get("problem", {}).get("context"):
             spec_dict["problem"]["context"] = "Generated context - needs manual review"
             filled_fields.append("problem.context")
-        
+
         # Check success metrics - ensure it has meaningful content
         success_metrics = spec_dict.get("success_metrics", {})
         if not success_metrics.get("metrics") or success_metrics.get("metrics") == []:
@@ -53,7 +52,7 @@ class FramerAgent(Agent):
                 "field": "success_metrics.metrics",
                 "reason": "Empty metrics list replaced with default business metrics"
             })
-        
+
         # Create updated spec from modified dict
         try:
             from ..types import SourceSpec
@@ -65,14 +64,14 @@ class FramerAgent(Agent):
                 "field": "validation",
                 "reason": f"Failed to apply changes: {str(e)}"
             })
-        
+
         notes = {
             "action": "framed_spec",
             "filled_fields": filled_fields,
             "overrides": overrides,
             "total_changes": len(filled_fields)
         }
-        
+
         return AgentOutput(
             notes=notes,
             artifacts=[],
@@ -83,10 +82,10 @@ class FramerAgent(Agent):
 
 class LibrarianAgent(Agent):
     """Agent that fetches and indexes research content."""
-    
+
     def __init__(self):
         super().__init__("LibrarianAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Fetch and index research content."""
         if ctx.offline:
@@ -95,7 +94,7 @@ class LibrarianAgent(Agent):
                 artifacts=[],
                 status=Status.OK.value
             )
-        
+
         # Stub implementation
         return AgentOutput(
             notes={"action": "research_completed", "sources": []},
@@ -106,10 +105,10 @@ class LibrarianAgent(Agent):
 
 class SlicerAgent(Agent):
     """Agent that slices and organizes content."""
-    
+
     def __init__(self):
         super().__init__("SlicerAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Slice and organize content for templates."""
         return AgentOutput(
@@ -121,22 +120,23 @@ class SlicerAgent(Agent):
 
 class PRDWriterAgent(Agent):
     """Agent that writes PRD documents."""
-    
+
     def __init__(self):
         super().__init__("PRDWriterAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Write PRD and test plan documents."""
-        from ..artifacts import DocumentArtifact
-        from ..types import PackType, Template, TemplateType
-        from ..rendering import TemplateRenderer
-        from pathlib import Path
         import datetime
-        
+        from pathlib import Path
+
+        from ..artifacts import DocumentArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType, Template, TemplateType
+
         # Initialize template renderer
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
-        
+
         # Prepare template data
         template_data = {
             "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
@@ -150,33 +150,33 @@ class PRDWriterAgent(Agent):
             "operations": spec.operations.model_dump() if spec.operations else {},
             "export": spec.export.model_dump() if spec.export else {},
             "run_id": str(ctx.run_id),
-            "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "pack_type": PackType.BALANCED.value,
             # Add placeholders for missing fields used in templates
             "risks_open_questions": {},
             "roadmap_preferences": {},
             "compliance_context": {}
         }
-        
+
         artifacts = []
-        
+
         try:
             # Generate PRD
-            prd_template = Template(
+            Template(
                 path=template_dir / "balanced" / "prd.md.j2",
                 type=TemplateType.MARKDOWN
             )
-            
+
             prd_content = renderer.render_string(
                 (template_dir / "balanced" / "prd.md.j2").read_text(),
                 template_data
             )
-            
+
             # Write PRD to file
             prd_path = ctx.out_dir / "prd.md"
             prd_path.parent.mkdir(parents=True, exist_ok=True)
             prd_path.write_text(prd_content)
-            
+
             prd_artifact = DocumentArtifact(
                 name="prd.md",
                 path=prd_path,
@@ -184,17 +184,17 @@ class PRDWriterAgent(Agent):
                 purpose="Product Requirements Document"
             )
             artifacts.append(prd_artifact)
-            
+
             # Generate Test Plan
             test_plan_content = renderer.render_string(
                 (template_dir / "balanced" / "test_plan.md.j2").read_text(),
                 template_data
             )
-            
+
             # Write test plan to file
             test_plan_path = ctx.out_dir / "test_plan.md"
             test_plan_path.write_text(test_plan_content)
-            
+
             test_plan_artifact = DocumentArtifact(
                 name="test_plan.md",
                 path=test_plan_path,
@@ -202,17 +202,17 @@ class PRDWriterAgent(Agent):
                 purpose="Test Plan and Strategy"
             )
             artifacts.append(test_plan_artifact)
-            
+
             return AgentOutput(
                 notes={
-                    "action": "prd_generated", 
+                    "action": "prd_generated",
                     "sections": ["overview", "requirements", "acceptance", "test_plan"],
                     "templates_used": ["prd.md.j2", "test_plan.md.j2"]
                 },
                 artifacts=artifacts,
                 status=Status.OK.value
             )
-            
+
         except Exception as e:
             return AgentOutput(
                 notes={
@@ -226,49 +226,50 @@ class PRDWriterAgent(Agent):
 
 class DiagrammerAgent(Agent):
     """Agent that generates Mermaid diagrams."""
-    
+
     def __init__(self):
         super().__init__("DiagrammerAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Generate lifecycle and sequence diagrams."""
-        from ..artifacts import DiagramArtifact
-        from ..types import PackType, Template, TemplateType
-        from ..rendering import TemplateRenderer
-        from pathlib import Path
         import datetime
-        
+        from pathlib import Path
+
+        from ..artifacts import DiagramArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType
+
         # Initialize template renderer
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
-        
+
         # Prepare template data
         template_data = {
             "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
             "diagram_scope": spec.diagram_scope.model_dump() if spec.diagram_scope else {},
             "run_id": str(ctx.run_id),
-            "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "pack_type": PackType.BALANCED.value
         }
-        
+
         artifacts = []
         templates_used = []
-        
+
         try:
             # Create diagrams directory
             diagrams_dir = ctx.out_dir / "diagrams"
             diagrams_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Generate lifecycle diagram if requested
             if spec.diagram_scope.include_lifecycle:
                 lifecycle_content = renderer.render_string(
                     (template_dir / "balanced" / "diagrams" / "lifecycle.mmd.j2").read_text(),
                     template_data
                 )
-                
+
                 lifecycle_path = diagrams_dir / "lifecycle.mmd"
                 lifecycle_path.write_text(lifecycle_content)
-                
+
                 lifecycle_artifact = DiagramArtifact(
                     name="lifecycle.mmd",
                     path=lifecycle_path,
@@ -277,29 +278,29 @@ class DiagrammerAgent(Agent):
                 )
                 artifacts.append(lifecycle_artifact)
                 templates_used.append("lifecycle.mmd.j2")
-            
+
             # Generate sequence diagram if requested
             if spec.diagram_scope.include_sequence:
                 sequence_content = renderer.render_string(
                     (template_dir / "balanced" / "diagrams" / "sequence.mmd.j2").read_text(),
                     template_data
                 )
-                
+
                 sequence_path = diagrams_dir / "sequence.mmd"
                 sequence_path.write_text(sequence_content)
-                
+
                 sequence_artifact = DiagramArtifact(
-                    name="sequence.mmd", 
+                    name="sequence.mmd",
                     path=sequence_path,
                     pack=PackType.BALANCED,
                     purpose="Sequence Diagram"
                 )
                 artifacts.append(sequence_artifact)
                 templates_used.append("sequence.mmd.j2")
-            
+
             return AgentOutput(
                 notes={
-                    "action": "diagrams_generated", 
+                    "action": "diagrams_generated",
                     "count": len(artifacts),
                     "templates_used": templates_used,
                     "lifecycle_included": spec.diagram_scope.include_lifecycle,
@@ -308,7 +309,7 @@ class DiagrammerAgent(Agent):
                 artifacts=artifacts,
                 status=Status.OK.value
             )
-            
+
         except Exception as e:
             return AgentOutput(
                 notes={
@@ -322,38 +323,36 @@ class DiagrammerAgent(Agent):
 
 class QAArchitectAgent(Agent):
     """Agent that designs test architecture and enhances test plans."""
-    
+
     def __init__(self):
         super().__init__("QAArchitectAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Enhance test plan with AC & matrix, validate test strategy."""
-        from ..types import PackType
-        from pathlib import Path
-        
+
         # Check if test plan exists from PRDWriterAgent
         test_plan_path = ctx.out_dir / "test_plan.md"
         enhancements_made = []
-        
+
         try:
             if test_plan_path.exists():
                 # Read existing test plan
                 content = test_plan_path.read_text()
-                
+
                 # Add QA-specific enhancements
                 qa_matrix = self._generate_qa_matrix(spec)
                 acceptance_criteria = self._extract_acceptance_criteria(spec)
-                
+
                 # Append QA architect enhancements
                 enhanced_content = content + "\n\n" + self._format_qa_enhancements(qa_matrix, acceptance_criteria)
-                
+
                 # Write enhanced content back
                 test_plan_path.write_text(enhanced_content)
                 enhancements_made = ["qa_matrix", "acceptance_criteria_mapping", "test_strategy_validation"]
-            
+
             return AgentOutput(
                 notes={
-                    "action": "test_architecture_designed", 
+                    "action": "test_architecture_designed",
                     "strategy": spec.test_strategy.model_dump() if spec.test_strategy else {},
                     "enhancements": enhancements_made,
                     "test_plan_enhanced": test_plan_path.exists()
@@ -361,7 +360,7 @@ class QAArchitectAgent(Agent):
                 artifacts=[],  # No new artifacts, enhanced existing ones
                 status=Status.OK.value
             )
-            
+
         except Exception as e:
             return AgentOutput(
                 notes={
@@ -371,13 +370,13 @@ class QAArchitectAgent(Agent):
                 artifacts=[],
                 status=Status.FAIL.value
             )
-    
+
     def _generate_qa_matrix(self, spec: SourceSpec) -> str:
         """Generate QA testing matrix."""
         matrix = "## QA Testing Matrix\n\n"
         matrix += "| Test Type | Priority | Coverage | Status |\n"
         matrix += "|-----------|----------|----------|--------|\n"
-        
+
         if spec.test_strategy:
             if spec.test_strategy.bdd_journeys:
                 matrix += f"| BDD Tests | High | {len(spec.test_strategy.bdd_journeys)} scenarios | Planned |\n"
@@ -385,27 +384,27 @@ class QAArchitectAgent(Agent):
                 matrix += f"| Contract Tests | High | {len(spec.test_strategy.contract_targets)} targets | Planned |\n"
             if spec.test_strategy.property_invariants:
                 matrix += f"| Property Tests | Medium | {len(spec.test_strategy.property_invariants)} properties | Planned |\n"
-        
+
         matrix += "| Unit Tests | High | Component level | Planned |\n"
         matrix += "| Integration Tests | Medium | System level | Planned |\n"
         matrix += "| Performance Tests | Medium | Load/Stress | Planned |\n"
-        
+
         return matrix
-    
+
     def _extract_acceptance_criteria(self, spec: SourceSpec) -> str:
         """Extract and format acceptance criteria."""
         ac_section = "## Detailed Acceptance Criteria\n\n"
-        
+
         if spec.test_strategy and spec.test_strategy.bdd_journeys:
             for journey in spec.test_strategy.bdd_journeys:
                 ac_section += f"### {journey}\n"
                 ac_section += f"- **Given** system is ready for {journey}\n"
                 ac_section += f"- **When** user performs {journey} action\n"
                 ac_section += f"- **Then** system delivers expected {journey} outcome\n"
-                ac_section += f"- **And** system maintains data integrity\n\n"
-        
+                ac_section += "- **And** system maintains data integrity\n\n"
+
         return ac_section
-    
+
     def _format_qa_enhancements(self, qa_matrix: str, acceptance_criteria: str) -> str:
         """Format QA enhancements for test plan."""
         return f"""
@@ -447,22 +446,23 @@ class QAArchitectAgent(Agent):
 
 class RoadmapperAgent(Agent):
     """Agent that generates project roadmaps."""
-    
+
     def __init__(self):
         super().__init__("RoadmapperAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Generate project roadmap."""
-        from ..artifacts import DocumentArtifact
-        from ..types import PackType, Template, TemplateType
-        from ..rendering import TemplateRenderer
-        from pathlib import Path
         import datetime
-        
+        from pathlib import Path
+
+        from ..artifacts import DocumentArtifact
+        from ..rendering import TemplateRenderer
+        from ..types import PackType
+
         # Initialize template renderer
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
-        
+
         # Prepare template data
         template_data = {
             "meta": spec.meta.model_dump() if spec.meta else {"name": "Untitled", "version": "1.0.0"},
@@ -474,40 +474,40 @@ class RoadmapperAgent(Agent):
             "operations": spec.operations.model_dump() if spec.operations else {},
             "export": spec.export.model_dump() if spec.export else {},
             "run_id": str(ctx.run_id),
-            "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "pack_type": PackType.BALANCED.value,
             # Add placeholders for missing fields used in templates
             "risks_open_questions": {},
             "roadmap_preferences": {},
             "compliance_context": {}
         }
-        
+
         try:
             # Generate roadmap
             roadmap_content = renderer.render_string(
                 (template_dir / "balanced" / "roadmap.md.j2").read_text(),
                 template_data
             )
-            
+
             # Write roadmap to file
             roadmap_path = ctx.out_dir / "roadmap.md"
             roadmap_path.parent.mkdir(parents=True, exist_ok=True)
             roadmap_path.write_text(roadmap_content)
-            
+
             roadmap_artifact = DocumentArtifact(
                 name="roadmap.md",
                 path=roadmap_path,
-                pack=PackType.BALANCED, 
+                pack=PackType.BALANCED,
                 purpose="Project Roadmap"
             )
-            
+
             # Calculate milestone count from template data
             milestone_length = 2  # Default milestone length
             milestone_count = 4  # Default from template
-            
+
             return AgentOutput(
                 notes={
-                    "action": "roadmap_generated", 
+                    "action": "roadmap_generated",
                     "milestones": milestone_count,
                     "milestone_length_weeks": milestone_length,
                     "templates_used": ["roadmap.md.j2"]
@@ -515,7 +515,7 @@ class RoadmapperAgent(Agent):
                 artifacts=[roadmap_artifact],
                 status=Status.OK.value
             )
-            
+
         except Exception as e:
             return AgentOutput(
                 notes={
@@ -529,10 +529,10 @@ class RoadmapperAgent(Agent):
 
 class CriticAgent(Agent):
     """Agent that reviews and critiques outputs."""
-    
+
     def __init__(self):
         super().__init__("CriticAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Review and critique generated artifacts."""
         return AgentOutput(
@@ -544,15 +544,15 @@ class CriticAgent(Agent):
 
 class PackagerAgent(Agent):
     """Agent that packages outputs into bundles."""
-    
+
     def __init__(self):
         super().__init__("PackagerAgent")
-    
+
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Package artifacts into zip bundles."""
         from ..artifacts import ZipArtifact
         from ..types import PackType
-        
+
         if spec.export.bundle:
             zip_artifact = ZipArtifact(
                 name="output_bundle.zip",
@@ -560,13 +560,13 @@ class PackagerAgent(Agent):
                 pack=PackType.BALANCED,
                 purpose="Bundled Output Package"
             )
-            
+
             return AgentOutput(
                 notes={"action": "bundle_created", "artifact_count": len(blackboard.artifacts)},
                 artifacts=[zip_artifact],
                 status=Status.OK.value
             )
-        
+
         return AgentOutput(
             notes={"action": "packaging_skipped", "reason": "bundle_disabled"},
             artifacts=[],

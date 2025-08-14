@@ -1,10 +1,11 @@
 """Core types and enums for Spec-to-Pack Studio."""
 
-from enum import Enum
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
+from typing import Any
 from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -19,7 +20,7 @@ class Status(Enum):
 class AudienceMode(Enum):
     """Target audience complexity level."""
     BRIEF = "brief"
-    BALANCED = "balanced" 
+    BALANCED = "balanced"
     DEEP = "deep"
 
 
@@ -67,13 +68,13 @@ class Meta(BaseModel):
     """Spec metadata."""
     name: str
     version: str = "0.1.0"
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class Problem(BaseModel):
     """Problem statement."""
     statement: str
-    context: Optional[str] = None
+    context: str | None = None
 
 
 class Constraints(BaseModel):
@@ -85,7 +86,7 @@ class Constraints(BaseModel):
 
 class SuccessMetrics(BaseModel):
     """Success metrics and acceptance criteria."""
-    metrics: List[str] = Field(default_factory=list)
+    metrics: list[str] = Field(default_factory=list)
 
 
 class DiagramScope(BaseModel):
@@ -98,7 +99,7 @@ class DiagramScope(BaseModel):
 class ContractsData(BaseModel):
     """Contract and schema data."""
     generate_schemas: bool = False
-    api_specs: List[str] = Field(default_factory=list)
+    api_specs: list[str] = Field(default_factory=list)
 
 
 class TestStrategy(BaseModel):
@@ -117,7 +118,7 @@ class Operations(BaseModel):
 
 class Export(BaseModel):
     """Export configuration."""
-    formats: List[str] = Field(default_factory=lambda: ["markdown"])
+    formats: list[str] = Field(default_factory=lambda: ["markdown"])
     bundle: bool = False
 
 
@@ -132,7 +133,7 @@ class SourceSpec(BaseModel):
     test_strategy: TestStrategy = Field(default_factory=TestStrategy)
     operations: Operations = Field(default_factory=Operations)
     export: Export = Field(default_factory=Export)
-    
+
     def is_valid(self) -> bool:
         """Check if the spec is valid."""
         try:
@@ -151,7 +152,7 @@ class ValidationError(BaseModel):
 class ValidationResult(BaseModel):
     """Result of spec validation."""
     ok: bool
-    errors: List[ValidationError] = Field(default_factory=list)
+    errors: list[ValidationError] = Field(default_factory=list)
 
 
 class RunContext(BaseModel):
@@ -161,7 +162,7 @@ class RunContext(BaseModel):
     dials: Dials = Field(default_factory=Dials)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     out_dir: Path
-    
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -174,9 +175,9 @@ class PipelineEvent(BaseModel):
     stage: str = "unknown"
     event: str = ""
     note: str
-    duration_ms: Optional[int] = None
+    duration_ms: int | None = None
     level: str = "info"
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class Template(BaseModel):
@@ -184,6 +185,6 @@ class Template(BaseModel):
     path: Path
     type: TemplateType
     version: str = "1.0.0"
-    
+
     class Config:
         arbitrary_types_allowed = True

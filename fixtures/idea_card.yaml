@@ -1,0 +1,32 @@
+name: "Smart Task Manager"
+description: "AI-powered task management tool for knowledge workers"
+problem: "Many knowledge workers struggle with task overwhelm and context switching, leading to decreased productivity and increased stress. Current task management tools are either too simple (basic to-do lists) or too complex (enterprise project management suites), lacking the right balance for individual productivity."
+context: "Individual knowledge workers and small teams need better task management that reduces context switching and improves focus."
+
+# Target audience
+audience:
+  primary: "Individual knowledge workers (developers, designers, analysts, consultants)"
+  secondary: "Small teams (2-5 people) in creative and technical fields"
+  use_context: "Daily task management, project tracking, workflow optimization"
+
+# Value proposition
+value_proposition:
+  - "Intelligent Prioritization: AI-powered task ranking based on deadlines, dependencies, and user patterns"
+  - "Context Preservation: Maintains work context when switching between tasks"
+  - "Seamless Integration: Works with existing tools (calendar, email, code repos)"
+  - "Adaptive Interface: UI complexity adjusts to user expertise and current workload"
+
+# Non-goals
+non_goals:
+  - "Enterprise project management"
+  - "Team collaboration features (initially)"
+  - "Time tracking and billing"
+  - "Complex reporting and analytics"
+  - "Mobile-first design (desktop focus initially)"
+
+# Success metrics
+success_metrics:
+  user_engagement: "80% daily active usage rate within 30 days"
+  task_completion: "25% improvement in task completion rates"
+  user_satisfaction: "NPS score >50 within 6 months"
+  context_switch_reduction: "40% fewer context switches per day"

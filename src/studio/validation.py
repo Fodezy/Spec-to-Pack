@@ -2,24 +2,25 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
+
 import jsonschema
 from pydantic import ValidationError as PydanticValidationError
 
-from .types import SourceSpec, ValidationResult, ValidationError
+from .types import SourceSpec, ValidationError, ValidationResult
 
 
 class SchemaValidator:
     """Validates specs against JSON schemas."""
-    
+
     def __init__(self, schema_dir: Path = None):
         """Initialize validator with schema directory."""
         if schema_dir is None:
             schema_dir = Path(__file__).parent.parent.parent / "schemas"
         self.schema_dir = schema_dir
         self._schemas = {}
-    
-    def _load_schema(self, schema_name: str) -> Dict[str, Any]:
+
+    def _load_schema(self, schema_name: str) -> dict[str, Any]:
         """Load a JSON schema by name."""
         if schema_name not in self._schemas:
             schema_path = self.schema_dir / f"{schema_name}.schema.json"
@@ -33,11 +34,11 @@ class SchemaValidator:
                     "type": "object"
                 }
         return self._schemas[schema_name]
-    
+
     def validate(self, spec: SourceSpec) -> ValidationResult:
         """Validate a source spec against its schema."""
         errors = []
-        
+
         try:
             # First validate with Pydantic
             spec.model_validate(spec.model_dump())
@@ -48,7 +49,7 @@ class SchemaValidator:
                     json_pointer=f"/{location.replace('.', '/')}",
                     message=error["msg"]
                 ))
-        
+
         # Additional JSON Schema validation
         try:
             schema = self._load_schema("source_spec")
@@ -66,7 +67,7 @@ class SchemaValidator:
                 json_pointer="/",
                 message=f"Schema validation failed: {str(e)}"
             ))
-        
+
         return ValidationResult(
             ok=len(errors) == 0,
             errors=errors

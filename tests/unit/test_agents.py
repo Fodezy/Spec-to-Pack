@@ -1,13 +1,17 @@
 """Unit tests for agents."""
 
-import pytest
 from uuid import uuid4
-from pathlib import Path
+
+import pytest
+
 from studio.agents.base import (
-    Agent, FramerAgent, PRDWriterAgent, DiagrammerAgent, QAArchitectAgent
+    DiagrammerAgent,
+    FramerAgent,
+    PRDWriterAgent,
+    QAArchitectAgent,
 )
-from studio.types import SourceSpec, Meta, Problem, RunContext, Dials, Status, PackType
 from studio.artifacts import Blackboard
+from studio.types import Dials, Meta, PackType, Problem, RunContext, SourceSpec, Status
 
 
 @pytest.fixture
@@ -39,19 +43,19 @@ def blackboard():
 def test_framer_agent(run_context, source_spec, blackboard):
     """Test FramerAgent execution."""
     agent = FramerAgent()
-    
+
     assert agent.name == "FramerAgent"
-    
+
     result = agent.run(run_context, source_spec, blackboard)
-    
+
     assert result.status == Status.OK.value
     assert "framed_spec" in result.notes["action"]
-    
+
     # Verify that fields were filled
     assert "filled_fields" in result.notes
     assert "overrides" in result.notes
     assert result.updated_spec is not None
-    
+
     # Check that missing fields were filled
     if not source_spec.meta.description:
         assert result.updated_spec.meta.description == "Generated description - needs manual review"
@@ -62,9 +66,9 @@ def test_framer_agent(run_context, source_spec, blackboard):
 def test_prd_writer_agent(run_context, source_spec, blackboard):
     """Test PRDWriterAgent execution."""
     agent = PRDWriterAgent()
-    
+
     result = agent.run(run_context, source_spec, blackboard)
-    
+
     assert result.status == Status.OK.value
     assert len(result.artifacts) == 1
     assert result.artifacts[0].name == "prd.md"
@@ -74,12 +78,12 @@ def test_prd_writer_agent(run_context, source_spec, blackboard):
 def test_diagrammer_agent(run_context, source_spec, blackboard):
     """Test DiagrammerAgent execution."""
     agent = DiagrammerAgent()
-    
+
     result = agent.run(run_context, source_spec, blackboard)
-    
+
     assert result.status == Status.OK.value
     assert len(result.artifacts) >= 1  # Should create lifecycle and/or sequence diagrams
-    
+
     # Check that at least one diagram was created
     diagram_names = [a.name for a in result.artifacts]
     assert any("lifecycle" in name or "sequence" in name for name in diagram_names)
@@ -88,9 +92,9 @@ def test_diagrammer_agent(run_context, source_spec, blackboard):
 def test_qa_architect_agent(run_context, source_spec, blackboard):
     """Test QAArchitectAgent execution."""
     agent = QAArchitectAgent()
-    
+
     result = agent.run(run_context, source_spec, blackboard)
-    
+
     assert result.status == Status.OK.value
     assert len(result.artifacts) == 1
     assert result.artifacts[0].name == "test_plan.md"
@@ -100,7 +104,7 @@ def test_qa_architect_agent(run_context, source_spec, blackboard):
 def test_agent_interface():
     """Test that agents follow the interface correctly."""
     agents = [FramerAgent(), PRDWriterAgent(), DiagrammerAgent(), QAArchitectAgent()]
-    
+
     for agent in agents:
         assert hasattr(agent, 'name')
         assert hasattr(agent, 'run')

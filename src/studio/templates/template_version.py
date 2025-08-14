@@ -1,9 +1,8 @@
 """Template versioning and management."""
 
-from pathlib import Path
-from typing import Dict, Any
 import subprocess
-import json
+from pathlib import Path
+from typing import Any
 
 # Template set versions with semantic versioning
 TEMPLATE_VERSIONS = {
@@ -31,7 +30,7 @@ def get_template_set_version(pack_type: str = "balanced") -> str:
     """Get semantic version for template set."""
     return f"{pack_type}-{TEMPLATE_VERSIONS.get(pack_type, '1.0.0')}"
 
-def get_template_metadata() -> Dict[str, Any]:
+def get_template_metadata() -> dict[str, Any]:
     """Get complete template metadata for manifest embedding."""
     return {
         "template_set": get_template_set_version(),

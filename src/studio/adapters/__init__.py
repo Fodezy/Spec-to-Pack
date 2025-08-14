@@ -1,11 +1,11 @@
 """External service adapters."""
 
-from .llm import LLMAdapter, StubLLMAdapter
-from .vector_store import VectorStoreAdapter, StubVectorStoreAdapter
 from .browser import BrowserAdapter, StubBrowserAdapter
+from .llm import LLMAdapter, StubLLMAdapter
+from .vector_store import StubVectorStoreAdapter, VectorStoreAdapter
 
 __all__ = [
     'LLMAdapter', 'StubLLMAdapter',
-    'VectorStoreAdapter', 'StubVectorStoreAdapter', 
+    'VectorStoreAdapter', 'StubVectorStoreAdapter',
     'BrowserAdapter', 'StubBrowserAdapter'
 ]

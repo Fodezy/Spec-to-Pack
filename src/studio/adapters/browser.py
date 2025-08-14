@@ -15,12 +15,12 @@ class HtmlContent:
 
 class BrowserAdapter(ABC):
     """Abstract browser adapter interface."""
-    
+
     @abstractmethod
     def fetch(self, url: str) -> HtmlContent:
         """Fetch HTML content from URL."""
         pass
-    
+
     @abstractmethod
     def extract(self, html_content: HtmlContent) -> str:
         """Extract clean text from HTML."""
@@ -29,7 +29,7 @@ class BrowserAdapter(ABC):
 
 class StubBrowserAdapter(BrowserAdapter):
     """Stub implementation for development/testing."""
-    
+
     def fetch(self, url: str) -> HtmlContent:
         """Return stub HTML content."""
         return HtmlContent(
@@ -38,7 +38,7 @@ class StubBrowserAdapter(BrowserAdapter):
             status_code=200,
             headers={"content-type": "text/html"}
         )
-    
+
     def extract(self, html_content: HtmlContent) -> str:
         """Extract stub text content."""
         # Simple HTML tag removal for stub

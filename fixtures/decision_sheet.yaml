@@ -1,0 +1,48 @@
+# Decision Sheet: Smart Task Manager
+
+# Pack configuration
+pack_type: "balanced"
+audience_mode: "balanced"
+development_flow: "dual_track"
+test_depth: "pyramid"
+
+# Technical constraints
+technology_stack:
+  frontend: "React/TypeScript"
+  backend: "Node.js/Express"
+  database: "PostgreSQL"
+  ai_ml: "OpenAI API integration"
+
+performance_requirements:
+  response_time_ms: 200
+  page_load_ms: 2000
+  offline_capability_days: 7
+
+security_requirements:
+  encryption: "End-to-end encryption for sensitive tasks"
+  authentication: "OAuth2 authentication"
+  compliance: "GDPR compliance for EU users"
+
+# Business constraints
+timeline_months: 6
+budget_usd: 150000
+team_size: 4
+team_composition: "1 frontend, 1 backend, 1 full-stack, 1 AI/ML"
+compliance_target: "SOC2 Type II within 12 months"
+
+# Quality constraints
+test_coverage_percent: 85
+availability_sla: 99.5
+scalability_concurrent_users: 10000
+accessibility_standard: "WCAG 2.1 AA"
+
+# NFR budgets
+latency_budget_p95_ms: 500
+data_retention_years: 2
+backup_frequency: "daily"
+backup_retention_days: 30
+monitoring: "real-time performance and error tracking"
+
+# Build configuration
+offline: true
+budget_tokens: 80000

@@ -1,21 +1,21 @@
 """CLI Controller for Spec-to-Pack Studio."""
 
+from pathlib import Path
+
 import click
 import yaml
-from pathlib import Path
-from typing import Optional
 
 from .app import StudioApp
-from .types import SourceSpec, PackType, Dials, AudienceMode
+from .types import AudienceMode, Dials, PackType, SourceSpec
 
 
 class CLIController:
     """CLI Controller following the class diagram pattern."""
-    
+
     def __init__(self):
         """Initialize CLI controller with StudioApp."""
         self.app = StudioApp()
-    
+
     def main(self, args) -> int:
         """Main CLI entry point."""
         return 0
@@ -38,29 +38,30 @@ def main():
 def validate(ctx, spec_path: Path):
     """Validate a source spec against its JSON schema."""
     from uuid import uuid4
+
     from .audit import AuditLog
-    
+
     # Create run context for audit logging
     run_id = uuid4()
     audit_log = AuditLog(spec_path.parent / "audit.jsonl")
-    
+
     click.echo(f"[VALIDATE] Validating spec: {spec_path}")
-    
+
     # Log validation start
     audit_log.log_event("validation_start", run_id, f"Starting validation of {spec_path}",
                        stage="validation", event="start")
-    
+
     try:
         # Check if file exists
         if not spec_path.exists():
             error_msg = f"File not found: {spec_path}"
             click.echo(f"ERROR: {error_msg}")
-            audit_log.log_event("validation_error", run_id, error_msg, 
+            audit_log.log_event("validation_error", run_id, error_msg,
                                details={"error_type": "file_not_found"},
                                stage="validation", event="error", level="error")
             audit_log.save()
             ctx.exit(2)
-        
+
         # Load spec from file
         try:
             with open(spec_path) as f:
@@ -72,27 +73,27 @@ def validate(ctx, spec_path: Path):
         except Exception as e:
             error_msg = f"Failed to parse file: {str(e)}"
             click.echo(f"ERROR: {error_msg}")
-            audit_log.log_event("validation_error", run_id, error_msg, 
+            audit_log.log_event("validation_error", run_id, error_msg,
                                details={"error_type": "parse_error"},
                                stage="validation", event="error", level="error")
             audit_log.save()
             ctx.exit(2)
-        
+
         # Create SourceSpec object
         try:
             spec = SourceSpec(**spec_data)
         except Exception as e:
             error_msg = f"Invalid spec format: {str(e)}"
             click.echo(f"ERROR: {error_msg}")
-            audit_log.log_event("validation_error", run_id, error_msg, 
-                               details={"error_type": "model_error"}, 
+            audit_log.log_event("validation_error", run_id, error_msg,
+                               details={"error_type": "model_error"},
                                stage="validation", event="error", level="error")
             audit_log.save()
             ctx.exit(2)
-        
+
         # Validate using StudioApp
         result = controller.app.validate(spec)
-        
+
         if result.ok:
             click.echo("PASS: Validation passed")
             audit_log.log_event("validation_success", run_id, "Validation completed successfully",
@@ -106,7 +107,7 @@ def validate(ctx, spec_path: Path):
                 error_detail = f"{error.json_pointer}: {error.message}"
                 click.echo(f"  {error_detail}")
                 error_details.append(error_detail)
-            
+
             error_msg = "Validation failed with schema errors"
             audit_log.log_event("validation_failed", run_id, error_msg, {
                 "error_count": len(result.errors),
@@ -114,11 +115,11 @@ def validate(ctx, spec_path: Path):
             })
             audit_log.save()
             ctx.exit(2)
-            
+
     except Exception as e:
         if isinstance(e, SystemExit):
             raise  # Re-raise SystemExit from ctx.exit()
-        
+
         error_msg = f"Unexpected error during validation: {str(e)}"
         click.echo(f"ERROR: {error_msg}")
         audit_log.log_event("validation_error", run_id, error_msg, {"error_type": "unexpected"})
@@ -135,9 +136,9 @@ def validate(ctx, spec_path: Path):
 @click.option("--offline", is_flag=True, help="Run in offline mode")
 @click.option("--audience", type=click.Choice(["brief", "balanced", "deep"]), default="balanced", help="Audience complexity level")
 def generate(
-    idea: Optional[Path], 
-    decisions: Optional[Path], 
-    out: Path, 
+    idea: Path | None,
+    decisions: Path | None,
+    out: Path,
     pack: str,
     dry_run: bool,
     offline: bool,
@@ -149,26 +150,26 @@ def generate(
             click.echo("[DRY-RUN] Dry run mode - previewing artifacts")
             # TODO: Implement dry run preview
             return
-        
+
         click.echo(f"[GENERATE] Generating {pack} pack")
         click.echo(f"[OUTPUT] Output directory: {out}")
-        
+
         if idea:
             click.echo(f"[IDEA] Idea file: {idea}")
         if decisions:
             click.echo(f"[DECISIONS] Decisions file: {decisions}")
-        
+
         if offline:
             click.echo("[OFFLINE] Running in offline mode")
-        
+
         # Convert string arguments to enums
         pack_type = PackType(pack)
-        
+
         # Only create CLI dials if no decision files provided
         cli_dials = None
         if not decisions:
             cli_dials = Dials(audience_mode=AudienceMode(audience))
-        
+
         # Generate using StudioApp (will use file-based dials if available)
         artifact_index = controller.app.generate_from_files(
             idea_path=idea,
@@ -178,17 +179,17 @@ def generate(
             offline=offline,
             dials=cli_dials
         )
-        
+
         click.echo("[SUCCESS] Generation completed")
         click.echo(f"[ARTIFACTS] Generated {len(artifact_index.artifacts)} artifacts")
         click.echo(f"[RUN-ID] Run ID: {artifact_index.run_id}")
-        
+
         # Save manifest
         manifest_path = out / "artifact_index.json"
         with open(manifest_path, 'w') as f:
             f.write(artifact_index.to_json())
         click.echo(f"[MANIFEST] Manifest saved: {manifest_path}")
-        
+
     except Exception as e:
         click.echo(f"[ERROR] Error generating pack: {str(e)}")
         import traceback
