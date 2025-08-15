@@ -49,7 +49,7 @@ class Orchestrator:
     def __init__(
         self,
         step_budget: int = 12,  # Per R1 specification
-        timeout_per_step_sec: int = 20,  # Per R1 specification
+        timeout_per_step_sec: int = 60,  # Increased for browser content fetching
         llm_adapter: LLMAdapter | None = None,
         vector_store_adapter: VectorStoreAdapter | None = None,
         browser_adapter: BrowserAdapter | None = None,
