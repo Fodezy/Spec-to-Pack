@@ -4,6 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .artifacts import ArtifactIndex, ZipArtifact
+from .logging import RAGLogger
 from .orchestrator import Orchestrator
 from .spec_builder import SpecBuilder
 from .types import Dials, PackType, RunContext, SourceSpec
@@ -28,7 +29,8 @@ class StudioApp:
         pack: PackType,
         out_dir: Path = None,
         offline: bool = False,
-        dials: Dials | None = None
+        dials: Dials | None = None,
+        rag_logger: RAGLogger | None = None
     ) -> ArtifactIndex:
         """Generate a document pack from a source spec."""
         # Set up run context
@@ -51,7 +53,7 @@ class StudioApp:
             raise ValueError(f"Spec validation failed: {'; '.join(error_messages)}")
 
         # Initialize orchestrator with appropriate adapters based on context
-        orchestrator = self._create_orchestrator(ctx)
+        orchestrator = self._create_orchestrator(ctx, rag_logger)
         
         # Run orchestrator
         return orchestrator.run(ctx, spec, pack)
@@ -63,7 +65,8 @@ class StudioApp:
         pack: PackType = PackType.BALANCED,
         out_dir: Path = None,
         offline: bool = False,
-        dials: Dials | None = None
+        dials: Dials | None = None,
+        rag_logger: RAGLogger | None = None
     ) -> ArtifactIndex:
         """Generate a document pack from idea and decision files."""
         # Build spec from files
@@ -74,7 +77,7 @@ class StudioApp:
             dials = file_dials
 
         # Generate pack
-        return self.generate(spec, pack, out_dir, offline, dials)
+        return self.generate(spec, pack, out_dir, offline, dials, rag_logger)
 
     def package(self, index: ArtifactIndex) -> ZipArtifact:
         """Package artifacts into a zip bundle."""
@@ -99,7 +102,7 @@ class StudioApp:
             purpose="Complete artifact bundle"
         )
 
-    def _create_orchestrator(self, ctx: RunContext):
+    def _create_orchestrator(self, ctx: RunContext, rag_logger: RAGLogger | None = None):
         """Create orchestrator with appropriate adapters based on context."""
         from .adapters.search import FallbackSearchAdapter, StubSearchAdapter
         from .guards.network_guards import enforce_offline_mode
@@ -114,4 +117,4 @@ class StudioApp:
         # Import here to avoid circular imports
         from .orchestrator import Orchestrator
         
-        return Orchestrator(search_adapter=search_adapter)
+        return Orchestrator(search_adapter=search_adapter, rag_logger=rag_logger)
