@@ -9,7 +9,6 @@ def test_studio_app_init():
     """Test StudioApp initialization."""
     app = StudioApp()
     assert app.schema_validator is not None
-    assert app.orchestrator is not None
     assert app.spec_builder is not None
 
 

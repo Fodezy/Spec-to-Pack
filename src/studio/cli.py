@@ -6,6 +6,7 @@ import click
 import yaml
 
 from .app import StudioApp
+from .logging import create_rag_logger
 from .types import AudienceMode, Dials, PackType, SourceSpec
 
 
@@ -135,6 +136,9 @@ def validate(ctx, spec_path: Path):
 @click.option("--dry-run", is_flag=True, help="Preview artifacts without generating")
 @click.option("--offline", is_flag=True, help="Run in offline mode")
 @click.option("--audience", type=click.Choice(["brief", "balanced", "deep"]), default="balanced", help="Audience complexity level")
+@click.option("--log-level", type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]), default="INFO", help="Logging verbosity level")
+@click.option("--log-file", type=click.Path(path_type=Path), help="Optional log file path")
+@click.option("--rag-logging", is_flag=True, help="Enable detailed RAG operation logging")
 def generate(
     idea: Path | None,
     decisions: Path | None,
@@ -142,7 +146,10 @@ def generate(
     pack: str,
     dry_run: bool,
     offline: bool,
-    audience: str
+    audience: str,
+    log_level: str,
+    log_file: Path | None,
+    rag_logging: bool
 ):
     """Generate a document pack from idea and decisions."""
     try:
@@ -161,6 +168,19 @@ def generate(
 
         if offline:
             click.echo("[OFFLINE] Running in offline mode")
+        
+        # Initialize RAG logger if requested
+        rag_logger = None
+        if rag_logging:
+            effective_log_file = log_file or (out / "rag.log" if out else None)
+            rag_logger = create_rag_logger(
+                log_level=log_level,
+                enable_console=True,
+                log_file=effective_log_file
+            )
+            click.echo(f"[LOGGING] RAG logging enabled at {log_level} level")
+            if effective_log_file:
+                click.echo(f"[LOGGING] Log file: {effective_log_file}")
 
         # Convert string arguments to enums
         pack_type = PackType(pack)
@@ -177,7 +197,8 @@ def generate(
             pack=pack_type,
             out_dir=out,
             offline=offline,
-            dials=cli_dials
+            dials=cli_dials,
+            rag_logger=rag_logger
         )
 
         click.echo("[SUCCESS] Generation completed")
