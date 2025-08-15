@@ -198,5 +198,208 @@ def generate(
         return 1
 
 
+@main.group()
+def cache():
+    """Cache management commands for research pipeline."""
+    pass
+
+
+@cache.command()
+def stats():
+    """Show cache statistics."""
+    try:
+        from .cache.research_cache import ResearchCacheManager
+        
+        cache_manager = ResearchCacheManager()
+        stats = cache_manager.cache_stats()
+        
+        click.echo("Cache Statistics:")
+        click.echo(f"  Total entries: {stats['total']['count']}")
+        click.echo(f"  Total size: {stats['total']['size_mb']:.2f} MB")
+        click.echo(f"  Total expired: {stats['total']['expired']}")
+        click.echo()
+        
+        for level, level_stats in stats.items():
+            if level != 'total':
+                click.echo(f"{level.upper()}:")
+                click.echo(f"  Entries: {level_stats['count']}")
+                click.echo(f"  Size: {level_stats['size_mb']:.2f} MB")
+                click.echo(f"  Expired: {level_stats['expired']}")
+                click.echo()
+            
+    except Exception as e:
+        click.echo(f"Error getting cache stats: {e}", err=True)
+        return 1
+
+
+@cache.command()
+@click.option("--level", type=click.Choice(["search", "content", "embeddings", "research", "all"]), 
+              default="all", help="Cache level to clear")
+@click.confirmation_option(prompt="Are you sure you want to clear the cache?")
+def clear(level):
+    """Clear cache levels."""
+    try:
+        from .cache.research_cache import ResearchCacheManager, CacheLevel
+        
+        cache_manager = ResearchCacheManager()
+        
+        if level == "all":
+            cleared = cache_manager.clear_all()
+            click.echo(f"Cleared {cleared} cache files from all levels")
+        else:
+            # Map CLI level names to CacheLevel enum
+            level_map = {
+                "search": CacheLevel.SEARCH_RESULTS,
+                "content": CacheLevel.SCRAPED_CONTENT,
+                "embeddings": CacheLevel.EMBEDDINGS,
+                "research": CacheLevel.RESEARCH_DOCS
+            }
+            
+            cache_level = level_map[level]
+            cleared = cache_manager.clear_level(cache_level)
+            click.echo(f"Cleared {cleared} cache files from {level} level")
+                
+    except Exception as e:
+        click.echo(f"Error clearing cache: {e}", err=True)
+        return 1
+
+
+@cache.command()
+def cleanup():
+    """Clean up expired cache entries."""
+    try:
+        from .cache.research_cache import ResearchCacheManager
+        
+        cache_manager = ResearchCacheManager()
+        cleaned = cache_manager.clear_expired()
+        click.echo(f"Cleaned up {cleaned} expired cache entries")
+        
+    except Exception as e:
+        click.echo(f"Error cleaning up cache: {e}", err=True)
+        return 1
+
+
+@cache.command()
+def setup():
+    """Setup SearxNG Docker container for research."""
+    try:
+        import subprocess
+        from pathlib import Path
+        
+        # Check if Docker is available
+        try:
+            subprocess.run(["docker", "--version"], check=True, capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            click.echo("Docker is not available. Please install Docker first.", err=True)
+            return 1
+            
+        # Check if docker-compose.searxng.yml exists
+        compose_file = Path("docker-compose.searxng.yml")
+        if not compose_file.exists():
+            click.echo("docker-compose.searxng.yml not found in current directory", err=True)
+            click.echo("Please run this command from the Spec-to-Pack project root", err=True)
+            return 1
+            
+        # Start SearxNG container
+        click.echo("Starting SearxNG Docker container...")
+        result = subprocess.run(
+            ["docker-compose", "-f", "docker-compose.searxng.yml", "up", "-d"],
+            capture_output=True, text=True
+        )
+        
+        if result.returncode == 0:
+            click.echo("SearxNG container started successfully")
+            click.echo("Service available at: http://localhost:8888")
+            click.echo("Wait ~30 seconds for the service to fully initialize")
+        else:
+            click.echo(f"Failed to start SearxNG container: {result.stderr}", err=True)
+            return 1
+            
+    except Exception as e:
+        click.echo(f"Error setting up SearxNG: {e}", err=True)
+        return 1
+
+
+@main.group()
+def research():
+    """Research pipeline commands."""
+    pass
+
+
+@research.command()
+@click.option("--query", default="test query", help="Test search query")
+@click.option("--offline", is_flag=True, help="Test in offline mode")
+def test(query, offline):
+    """Test research pipeline components."""
+    try:
+        from .adapters.search import FallbackSearchAdapter
+        from .adapters.embeddings import DualModelEmbeddingsAdapter
+        from .guards.content_guards import ContentGuard
+        
+        click.echo(f"Testing research pipeline with query: '{query}'")
+        
+        if offline:
+            click.echo("Running in offline mode - using stub adapters")
+            from .adapters.search import StubSearchAdapter
+            from .adapters.embeddings import StubEmbeddingsAdapter
+            
+            search_adapter = StubSearchAdapter()
+            embeddings_adapter = StubEmbeddingsAdapter()
+        else:
+            click.echo("Running in online mode")
+            search_adapter = FallbackSearchAdapter()
+            embeddings_adapter = DualModelEmbeddingsAdapter()
+        
+        # Test search adapter
+        click.echo("\n1. Testing search adapter...")
+        if search_adapter.health_check():
+            click.echo("[OK] Search adapter health check passed")
+            
+            results = search_adapter.search(query, limit=3)
+            click.echo(f"[OK] Search returned {len(results)} results")
+            for i, result in enumerate(results[:2], 1):
+                click.echo(f"  {i}. {result.title} ({result.engine})")
+        else:
+            click.echo("[FAIL] Search adapter health check failed")
+            
+        # Test embeddings adapter
+        click.echo("\n2. Testing embeddings adapter...")
+        try:
+            if hasattr(embeddings_adapter, 'encode_query'):
+                # Dual model adapter
+                query_emb = embeddings_adapter.encode_query(query)
+                content_emb = embeddings_adapter.encode_content("sample content")
+                click.echo(f"[OK] Query embedding: {len(query_emb)}d")
+                click.echo(f"[OK] Content embedding: {len(content_emb)}d")
+            else:
+                # Standard adapter
+                embedding = embeddings_adapter.encode(query)
+                click.echo(f"[OK] Embedding: {len(embedding)}d")
+        except Exception as e:
+            click.echo(f"[FAIL] Embeddings test failed: {e}")
+            
+        # Test content guard
+        click.echo("\n3. Testing content guard...")
+        content_guard = ContentGuard()
+        try:
+            # Test with example.com (should be safe)
+            test_url = "https://example.com"
+            content_guard.check_url_allowed(test_url)
+            click.echo(f"[OK] URL allowed: {test_url}")
+            
+            # Test content size limits
+            test_content = "This is test content. " * 100
+            processed = content_guard.check_content_size(test_content, test_url)
+            click.echo(f"[OK] Content processing: {len(processed)} chars")
+        except Exception as e:
+            click.echo(f"[FAIL] Content guard test failed: {e}")
+            
+        click.echo("\n[OK] Research pipeline test completed")
+        
+    except Exception as e:
+        click.echo(f"Research pipeline test failed: {e}", err=True)
+        return 1
+
+
 if __name__ == "__main__":
     main()

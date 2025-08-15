@@ -4,7 +4,9 @@ import time
 from typing import Any
 
 from .adapters.browser import BrowserAdapter, StubBrowserAdapter
+from .adapters.embeddings import DualModelEmbeddingsAdapter, EmbeddingsAdapter, StubEmbeddingsAdapter
 from .adapters.llm import LLMAdapter, StubLLMAdapter
+from .adapters.search import FallbackSearchAdapter, SearchAdapter, StubSearchAdapter
 from .adapters.vector_store import StubVectorStoreAdapter, VectorStoreAdapter
 from .agents.base import (
     AccessibilityAgent,
@@ -50,7 +52,9 @@ class Orchestrator:
         timeout_per_step_sec: int = 20,  # Per R1 specification
         llm_adapter: LLMAdapter | None = None,
         vector_store_adapter: VectorStoreAdapter | None = None,
-        browser_adapter: BrowserAdapter | None = None
+        browser_adapter: BrowserAdapter | None = None,
+        embeddings_adapter: EmbeddingsAdapter | None = None,
+        search_adapter: SearchAdapter | None = None
     ):
         """Initialize orchestrator with budgets and adapters."""
         self.step_budget = step_budget
@@ -60,15 +64,42 @@ class Orchestrator:
         self.llm_adapter = llm_adapter or StubLLMAdapter()
         self.vector_store_adapter = vector_store_adapter or StubVectorStoreAdapter()
         self.browser_adapter = browser_adapter or StubBrowserAdapter()
+        # Use real search adapter by default, only stub if explicitly passed
+        if search_adapter is None:
+            try:
+                self.search_adapter = FallbackSearchAdapter()
+            except ImportError:
+                self.search_adapter = StubSearchAdapter()
+        else:
+            self.search_adapter = search_adapter
+        
+        # Use dual model embeddings by default, fallback to stub
+        if embeddings_adapter is None:
+            try:
+                self.embeddings_adapter = DualModelEmbeddingsAdapter()
+            except ImportError:
+                self.embeddings_adapter = StubEmbeddingsAdapter()
+        else:
+            self.embeddings_adapter = embeddings_adapter
 
         # Core components
         self.schema_validator = SchemaValidator()
         self.template_renderer = TemplateRenderer()
 
+        # Initialize cache manager
+        from .cache import ResearchCacheManager
+        self.cache_manager = ResearchCacheManager()
+
         # Agent registry
         self.agents: dict[str, Agent] = {
             "framer": FramerAgent(),
-            "librarian": LibrarianAgent(),
+            "librarian": LibrarianAgent(
+                search_adapter=self.search_adapter,
+                browser_adapter=self.browser_adapter,
+                vector_store_adapter=self.vector_store_adapter,
+                embeddings_model=self.embeddings_adapter,
+                cache_manager=self.cache_manager
+            ),
             "prd_writer": PRDWriterAgent(),
             "diagrammer": DiagrammerAgent(),
             "qa_architect": QAArchitectAgent(),

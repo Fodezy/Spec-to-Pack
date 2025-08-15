@@ -1,0 +1,19 @@
+dials:
+  audience_mode: "business"
+  development_flow: "agile"
+  test_depth: "comprehensive"
+pack_preferences:
+  include_diagrams: true
+  include_security_analysis: true
+  include_performance_requirements: true
+technical_preferences:
+  architecture_style: "microservices"
+  deployment_target: "cloud"
+  scalability_requirements: "high"
+compliance_requirements:
+  - "GDPR"
+  - "PCI-DSS"
+project_constraints:
+  timeline: "6 months"
+  budget: "medium"
+  team_size: "5-8 developers"
