@@ -103,21 +103,25 @@ class FramerAgent(Agent):
 
 
 class LibrarianAgent(Agent):
-    """Agent that fetches and indexes research content."""
+    """Agent that fetches and indexes research content with RAG capabilities."""
 
-    def __init__(self, browser_adapter=None, vector_store_adapter=None, embeddings_model=None):
+    def __init__(self, search_adapter=None, browser_adapter=None, vector_store_adapter=None, embeddings_model=None, cache_manager=None):
         super().__init__("LibrarianAgent")
+        self.search_adapter = search_adapter
         self.browser_adapter = browser_adapter
         self.vector_store_adapter = vector_store_adapter  
         self.embeddings_model = embeddings_model
+        self.cache_manager = cache_manager
 
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
-        """Fetch and index research content."""
+        """Fetch and index research content with RAG capabilities."""
         import hashlib
         import uuid
         from datetime import datetime
+        
         from ..types import ContentProvenance, ResearchDocument
         
+        # Handle offline mode
         if ctx.offline:
             return AgentOutput(
                 notes={"action": "skipped_research", "reason": "offline_mode"},
@@ -125,44 +129,106 @@ class LibrarianAgent(Agent):
                 status=Status.OK.value
             )
 
-        # Use stub adapters if none provided
+        # Initialize adapters with defaults if none provided
+        if self.search_adapter is None:
+            from ..adapters.search import FallbackSearchAdapter
+            self.search_adapter = FallbackSearchAdapter()
+            
         if self.browser_adapter is None:
-            from ..adapters.browser import StubBrowserAdapter
-            self.browser_adapter = StubBrowserAdapter()
+            # Use PlaywrightBrowserAdapter by default, but fall back to stub in test environments
+            # or when offline mode is enabled
+            if ctx.offline:
+                from ..adapters.browser import StubBrowserAdapter
+                self.browser_adapter = StubBrowserAdapter()
+            else:
+                try:
+                    from ..adapters.browser import PlaywrightBrowserAdapter
+                    self.browser_adapter = PlaywrightBrowserAdapter()
+                except ImportError:
+                    # Fallback to stub if playwright not available
+                    from ..adapters.browser import StubBrowserAdapter
+                    self.browser_adapter = StubBrowserAdapter()
             
         if self.vector_store_adapter is None:
             from ..adapters.vector_store import StubVectorStoreAdapter
             self.vector_store_adapter = StubVectorStoreAdapter()
             
         if self.embeddings_model is None:
-            from ..adapters.embeddings import StubEmbeddingsAdapter
-            self.embeddings_model = StubEmbeddingsAdapter()
+            from ..adapters.embeddings import DualModelEmbeddingsAdapter
+            try:
+                self.embeddings_model = DualModelEmbeddingsAdapter()
+            except ImportError:
+                from ..adapters.embeddings import StubEmbeddingsAdapter
+                self.embeddings_model = StubEmbeddingsAdapter()
+                
+        if self.cache_manager is None:
+            from ..cache import ResearchCacheManager
+            self.cache_manager = ResearchCacheManager()
 
         research_docs = []
         fetched_count = 0
         error_count = 0
         
         try:
-            # Get URLs from research context or generate based on problem statement
-            urls_to_fetch = spec.research_context.search_domains if spec.research_context.search_domains else []
+            # Generate research queries from spec
+            queries = self._generate_research_queries(spec)
             
-            # If no URLs provided, use stub URLs based on problem context
-            if not urls_to_fetch:
-                urls_to_fetch = self._generate_research_urls(spec.problem.statement)
+            # Search for content with caching
+            all_urls = []
+            for query in queries:
+                # Check cache first
+                cached_results = self.cache_manager.get_search_results(query, "general")
+                if cached_results:
+                    search_results = cached_results
+                else:
+                    # Perform search
+                    search_results = self.search_adapter.search(query, "general", limit=5)
+                    # Cache results
+                    self.cache_manager.cache_search_results(query, "general", search_results)
+                
+                # Extract URLs from search results
+                urls_from_search = [result.url for result in search_results]
+                all_urls.extend(urls_from_search)
             
-            # Limit number of URLs to process
-            max_docs = min(spec.research_context.max_documents, len(urls_to_fetch))
+            # Add any additional URLs from spec
+            if hasattr(spec, 'research_context') and hasattr(spec.research_context, 'search_domains'):
+                all_urls.extend(spec.research_context.search_domains or [])
             
-            for i, url in enumerate(urls_to_fetch[:max_docs]):
+            # Remove duplicates while preserving order
+            unique_urls = list(dict.fromkeys(all_urls))
+            
+            # Limit number of URLs to process (security guard)
+            max_docs = min(10, len(unique_urls))  # Default limit
+            
+            for i, url in enumerate(unique_urls[:max_docs]):
                 try:
-                    # Fetch content with offline mode check
+                    # Check cache first for scraped content
+                    cached_doc = self.cache_manager.get_research_document(url)
+                    if cached_doc:
+                        research_docs.append(cached_doc)
+                        fetched_count += 1
+                        continue
+                    
+                    # Basic URL validation and rate limiting
+                    if not url.startswith(('http://', 'https://')):
+                        continue
+                        
+                    # Add delay between requests (rate limiting)
+                    import time
+                    if i > 0:
+                        time.sleep(2.0)  # 2 second delay
+                    
+                    # Fetch content with browser adapter
                     html_content = self.browser_adapter.fetch(url, offline_mode=ctx.offline)
                     
-                    if html_content.status_code == 200:
+                    if html_content and hasattr(html_content, 'status_code') and html_content.status_code == 200:
                         # Extract clean text
                         text_content = self.browser_adapter.extract(html_content)
                         
-                        if text_content.strip():
+                        if text_content and text_content.strip():
+                            # Apply content size limits (8000 tokens ~ 6000 words)
+                            if len(text_content) > 32000:  # Rough token limit
+                                text_content = text_content[:32000] + "..."
                             # Create content hash for deduplication
                             content_hash = hashlib.sha256(text_content.encode('utf-8')).hexdigest()
                             
@@ -217,7 +283,7 @@ class LibrarianAgent(Agent):
             return AgentOutput(
                 notes={
                     "action": "research_completed", 
-                    "urls_processed": len(urls_to_fetch[:max_docs]),
+                    "urls_processed": len(unique_urls[:max_docs]),
                     "documents_fetched": fetched_count,
                     "errors": error_count,
                     "total_content_length": sum(len(doc.content) for doc in research_docs),
@@ -239,15 +305,36 @@ class LibrarianAgent(Agent):
                 status=Status.FAIL.value
             )
             
-    def _generate_research_urls(self, problem_statement: str) -> list[str]:
-        """Generate stub research URLs based on problem statement."""
-        # In a real implementation, this might use search APIs or predefined sources
-        # For now, return stub URLs for testing
-        return [
-            "https://example.com/docs/overview",
-            "https://example.com/best-practices", 
-            "https://example.com/implementation-guide"
-        ]
+    def _generate_research_queries(self, spec: SourceSpec) -> list[str]:
+        """Generate research queries based on the spec content."""
+        queries = []
+        
+        # Extract key terms from problem statement
+        if spec.problem and spec.problem.statement:
+            problem = spec.problem.statement
+            queries.append(f"{problem} best practices")
+            queries.append(f"{problem} implementation guide")
+            
+        # Add market research query
+        if spec.meta and spec.meta.name:
+            queries.append(f"{spec.meta.name} market analysis 2024")
+            queries.append(f"{spec.meta.name} technical architecture")
+            
+        # Add domain-specific queries based on key features
+        if hasattr(spec, 'success_metrics') and spec.success_metrics and spec.success_metrics.metrics:
+            for metric in spec.success_metrics.metrics[:3]:  # Limit to first 3
+                if isinstance(metric, str) and len(metric) > 10:
+                    queries.append(f"{metric} industry standards")
+        
+        # Fallback queries if none generated
+        if not queries:
+            queries = [
+                "software development best practices",
+                "system architecture patterns",
+                "performance optimization techniques"
+            ]
+            
+        return queries[:5]  # Limit to 5 queries max
         
     def _generate_embeddings(self, text: str) -> list[float]:
         """Generate embeddings using the configured model."""
@@ -285,7 +372,7 @@ class PRDWriterAgent(Agent):
         super().__init__("PRDWriterAgent")
 
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
-        """Write PRD and test plan documents."""
+        """Write PRD and test plan documents with research integration."""
         import datetime
         from pathlib import Path
 
@@ -296,6 +383,10 @@ class PRDWriterAgent(Agent):
         # Initialize template renderer
         template_dir = Path(__file__).parent.parent / "templates"
         renderer = TemplateRenderer(template_dir)
+
+        # Retrieve research documents from blackboard (if available)
+        research_docs = blackboard.notes.get("research_documents", [])
+        research_evidence = self._extract_research_evidence(research_docs, spec.problem.statement if spec.problem else "")
 
         # Prepare template data
         template_data = {
@@ -315,7 +406,11 @@ class PRDWriterAgent(Agent):
             # Add placeholders for missing fields used in templates
             "risks_open_questions": {},
             "roadmap_preferences": {},
-            "compliance_context": {}
+            "compliance_context": {},
+            # RAG Integration: Research evidence and citations
+            "research_evidence": research_evidence,
+            "research_available": len(research_docs) > 0,
+            "research_methodology": self._get_research_methodology(research_docs)
         }
 
         artifacts = []
@@ -382,6 +477,141 @@ class PRDWriterAgent(Agent):
                 artifacts=[],
                 status=Status.FAIL.value
             )
+
+    def _extract_research_evidence(self, research_docs: list, problem_statement: str) -> dict:
+        """Extract and organize research evidence for PRD integration.
+        
+        Args:
+            research_docs: List of ResearchDocument objects from LibrarianAgent
+            problem_statement: Problem statement for relevance filtering
+            
+        Returns:
+            Dictionary with organized research evidence and citations
+        """
+        if not research_docs:
+            return {
+                "market_evidence": [],
+                "technical_evidence": [],
+                "competitive_evidence": [],
+                "citations": [],
+                "summary": "No research data available for this analysis."
+            }
+        
+        # Simple keyword-based categorization
+        market_keywords = ["market", "user", "customer", "adoption", "demand", "revenue", "business", "growth"]
+        technical_keywords = ["technology", "implementation", "architecture", "security", "performance", "scalability", "integration"]
+        competitive_keywords = ["competitor", "alternative", "comparison", "versus", "competitor", "market share"]
+        
+        market_evidence = []
+        technical_evidence = []
+        competitive_evidence = []
+        citations = []
+        
+        for i, doc in enumerate(research_docs):
+            if not hasattr(doc, 'content') or not hasattr(doc, 'provenance'):
+                continue
+                
+            content_lower = doc.content.lower()
+            source_url = doc.provenance.source_url if hasattr(doc.provenance, 'source_url') else "Unknown source"
+            
+            # Create citation
+            citation = {
+                "id": i + 1,
+                "url": source_url,
+                "title": self._extract_title_from_content(doc.content),
+                "retrieved_at": doc.provenance.retrieved_at.isoformat() if hasattr(doc.provenance, 'retrieved_at') else "",
+                "snippet": doc.content[:200] + "..." if len(doc.content) > 200 else doc.content
+            }
+            citations.append(citation)
+            
+            # Categorize evidence based on content keywords
+            market_score = sum(1 for kw in market_keywords if kw in content_lower)
+            technical_score = sum(1 for kw in technical_keywords if kw in content_lower)
+            competitive_score = sum(1 for kw in competitive_keywords if kw in content_lower)
+            
+            evidence_item = {
+                "content": doc.content[:500] + "..." if len(doc.content) > 500 else doc.content,
+                "source": source_url,
+                "citation_id": citation["id"],
+                "relevance_score": max(market_score, technical_score, competitive_score)
+            }
+            
+            # Assign to category with highest score
+            if market_score >= technical_score and market_score >= competitive_score and market_score > 0:
+                market_evidence.append(evidence_item)
+            elif technical_score >= competitive_score and technical_score > 0:
+                technical_evidence.append(evidence_item)
+            elif competitive_score > 0:
+                competitive_evidence.append(evidence_item)
+            else:
+                # Default to market evidence if no clear category
+                market_evidence.append(evidence_item)
+        
+        # Sort by relevance score (highest first)
+        market_evidence.sort(key=lambda x: x["relevance_score"], reverse=True)
+        technical_evidence.sort(key=lambda x: x["relevance_score"], reverse=True)
+        competitive_evidence.sort(key=lambda x: x["relevance_score"], reverse=True)
+        
+        return {
+            "market_evidence": market_evidence[:3],  # Top 3 most relevant
+            "technical_evidence": technical_evidence[:3],
+            "competitive_evidence": competitive_evidence[:3],
+            "citations": citations,
+            "summary": f"Research analysis based on {len(research_docs)} sources covering market, technical, and competitive aspects."
+        }
+    
+    def _extract_title_from_content(self, content: str) -> str:
+        """Extract a reasonable title from document content."""
+        if not content:
+            return "Research Document"
+            
+        # Try to find the first line that looks like a title
+        lines = content.split('\n')
+        for line in lines[:5]:  # Check first 5 lines
+            line = line.strip()
+            if line and len(line) < 100:  # Reasonable title length
+                # Clean common title patterns
+                if line.startswith('#'):
+                    line = line.lstrip('#').strip()
+                return line
+                
+        # Fallback: use first 50 characters
+        return content[:50].strip() + "..."
+    
+    def _get_research_methodology(self, research_docs: list) -> dict:
+        """Generate research methodology disclosure for transparency.
+        
+        Args:
+            research_docs: List of research documents
+            
+        Returns:
+            Dictionary with methodology information
+        """
+        if not research_docs:
+            return {
+                "sources_count": 0,
+                "data_collection": "No research conducted",
+                "analysis_method": "Template-based generation",
+                "limitations": "Analysis based solely on provided specifications without external research validation."
+            }
+        
+        unique_domains = set()
+        for doc in research_docs:
+            if hasattr(doc, 'provenance') and hasattr(doc.provenance, 'source_url'):
+                try:
+                    from urllib.parse import urlparse
+                    domain = urlparse(doc.provenance.source_url).netloc
+                    unique_domains.add(domain)
+                except:
+                    pass
+        
+        return {
+            "sources_count": len(research_docs),
+            "unique_domains": len(unique_domains),
+            "data_collection": f"Automated web research using LibrarianAgent with {len(research_docs)} documents from {len(unique_domains)} unique domains",
+            "analysis_method": "Keyword-based content categorization with relevance scoring for market, technical, and competitive evidence",
+            "limitations": "Research limited to publicly available web content. Analysis is automated and may not capture all relevant nuances. Citations provided for verification."
+        }
 
 
 class DiagrammerAgent(Agent):
