@@ -16,7 +16,6 @@ class StudioApp:
     def __init__(self):
         """Initialize the Studio application."""
         self.schema_validator = SchemaValidator()
-        self.orchestrator = Orchestrator()
         self.spec_builder = SpecBuilder()
 
     def validate(self, spec: SourceSpec) -> ValidationResult:
@@ -51,8 +50,11 @@ class StudioApp:
             error_messages = [f"{err.json_pointer}: {err.message}" for err in validation_result.errors]
             raise ValueError(f"Spec validation failed: {'; '.join(error_messages)}")
 
+        # Initialize orchestrator with appropriate adapters based on context
+        orchestrator = self._create_orchestrator(ctx)
+        
         # Run orchestrator
-        return self.orchestrator.run(ctx, spec, pack)
+        return orchestrator.run(ctx, spec, pack)
 
     def generate_from_files(
         self,
@@ -96,3 +98,20 @@ class StudioApp:
             pack=PackType.BOTH,  # Contains artifacts from all packs
             purpose="Complete artifact bundle"
         )
+
+    def _create_orchestrator(self, ctx: RunContext):
+        """Create orchestrator with appropriate adapters based on context."""
+        from .adapters.search import FallbackSearchAdapter, StubSearchAdapter
+        from .guards.network_guards import enforce_offline_mode
+        
+        # Configure offline mode if needed
+        if ctx.offline:
+            enforce_offline_mode(True)
+            search_adapter = StubSearchAdapter()
+        else:
+            search_adapter = FallbackSearchAdapter()
+        
+        # Import here to avoid circular imports
+        from .orchestrator import Orchestrator
+        
+        return Orchestrator(search_adapter=search_adapter)

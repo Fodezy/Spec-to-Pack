@@ -146,6 +146,151 @@ class CachedEmbeddingsAdapter(EmbeddingsAdapter):
         return self.base_adapter.dimension
 
 
+class DualModelEmbeddingsAdapter(EmbeddingsAdapter):
+    """Dual model embeddings adapter with query and content models."""
+    
+    def __init__(self, 
+                 query_model: str = "BAAI/bge-small-en-v1.5",
+                 content_model: str = "BAAI/bge-base-en-v1.5", 
+                 cache_dir: Optional[str] = None):
+        """Initialize dual model embeddings adapter.
+        
+        Args:
+            query_model: Model for queries and tool calls (384d)
+            content_model: Model for documents and content (768d)
+            cache_dir: Cache directory for models
+        """
+        self.query_model_name = query_model
+        self.content_model_name = content_model
+        self.cache_dir = cache_dir
+        self._query_model = None
+        self._content_model = None
+        self._query_dimension = None
+        self._content_dimension = None
+        
+    def _load_query_model(self):
+        """Lazy load the query embeddings model."""
+        if self._query_model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError:
+                raise ImportError("DualModelEmbeddingsAdapter requires sentence-transformers. Install with: pip install 'studio[rag]'")
+            
+            self._query_model = SentenceTransformer(
+                self.query_model_name,
+                cache_folder=self.cache_dir
+            )
+            
+            # Determine dimension
+            test_embedding = self._query_model.encode("test")
+            self._query_dimension = len(test_embedding)
+        
+        return self._query_model
+        
+    def _load_content_model(self):
+        """Lazy load the content embeddings model."""
+        if self._content_model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError:
+                raise ImportError("DualModelEmbeddingsAdapter requires sentence-transformers. Install with: pip install 'studio[rag]'")
+            
+            self._content_model = SentenceTransformer(
+                self.content_model_name,
+                cache_folder=self.cache_dir
+            )
+            
+            # Determine dimension
+            test_embedding = self._content_model.encode("test")
+            self._content_dimension = len(test_embedding)
+        
+        return self._content_model
+    
+    def encode_query(self, text: str) -> list[float]:
+        """Encode query text using query model (384d)."""
+        model = self._load_query_model()
+        embedding = model.encode(text, normalize_embeddings=True)
+        return embedding.tolist()
+        
+    def encode_content(self, text: str) -> list[float]:
+        """Encode content text using content model (768d)."""
+        model = self._load_content_model()
+        embedding = model.encode(text, normalize_embeddings=True)
+        return embedding.tolist()
+        
+    def encode_batch_queries(self, texts: list[str]) -> list[list[float]]:
+        """Encode multiple queries using query model."""
+        model = self._load_query_model()
+        embeddings = model.encode(texts, normalize_embeddings=True)
+        return [emb.tolist() for emb in embeddings]
+        
+    def encode_batch_content(self, texts: list[str]) -> list[list[float]]:
+        """Encode multiple content texts using content model."""
+        model = self._load_content_model()
+        embeddings = model.encode(texts, normalize_embeddings=True)
+        return [emb.tolist() for emb in embeddings]
+    
+    def encode(self, text: str) -> list[float]:
+        """Default encode using content model for backward compatibility."""
+        return self.encode_content(text)
+        
+    def encode_batch(self, texts: list[str]) -> list[list[float]]:
+        """Default batch encode using content model for backward compatibility."""
+        return self.encode_batch_content(texts)
+        
+    @property
+    def dimension(self) -> int:
+        """Get content model dimension (default for compatibility)."""
+        if self._content_dimension is None:
+            self._load_content_model()  # This will set _content_dimension
+        return self._content_dimension
+        
+    @property
+    def query_dimension(self) -> int:
+        """Get query model dimension."""
+        if self._query_dimension is None:
+            self._load_query_model()  # This will set _query_dimension
+        return self._query_dimension
+        
+    @property
+    def content_dimension(self) -> int:
+        """Get content model dimension."""
+        if self._content_dimension is None:
+            self._load_content_model()  # This will set _content_dimension
+        return self._content_dimension
+        
+    def cross_similarity(self, query: str, content: str) -> float:
+        """Calculate cross-model similarity between query and content.
+        
+        Args:
+            query: Query text (encoded with query model)
+            content: Content text (encoded with content model)
+            
+        Returns:
+            Cosine similarity score between query and content embeddings
+        """
+        import numpy as np
+        
+        query_emb = np.array(self.encode_query(query))
+        content_emb = np.array(self.encode_content(content))
+        
+        # For cross-model similarity, we need to handle different dimensions
+        # Use a simple approach: pad or truncate to match dimensions
+        if len(query_emb) < len(content_emb):
+            # Pad query embedding to match content
+            padded_query = np.pad(query_emb, (0, len(content_emb) - len(query_emb)), 'constant')
+            similarity = np.dot(padded_query, content_emb) / (np.linalg.norm(padded_query) * np.linalg.norm(content_emb))
+        elif len(query_emb) > len(content_emb):
+            # Pad content embedding to match query
+            padded_content = np.pad(content_emb, (0, len(query_emb) - len(content_emb)), 'constant')
+            similarity = np.dot(query_emb, padded_content) / (np.linalg.norm(query_emb) * np.linalg.norm(padded_content))
+        else:
+            # Same dimensions
+            similarity = np.dot(query_emb, content_emb) / (np.linalg.norm(query_emb) * np.linalg.norm(content_emb))
+            
+        return float(similarity)
+
+
 class StubEmbeddingsAdapter(EmbeddingsAdapter):
     """Stub embeddings adapter for testing."""
     

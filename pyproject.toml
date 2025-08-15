@@ -40,10 +40,26 @@ dev = [
     "mypy>=1.5.0",
 ]
 rag = [
+    # Search engines
+    "duckduckgo-search>=3.9.0",
+    "requests>=2.31.0",
+    
+    # Dual Model Embeddings
+    "sentence-transformers>=2.2.0",
+    "torch>=2.0.0",
+    "transformers>=4.35.0",
+    "numpy>=1.24.0",
+    
+    # Text Processing
+    "tiktoken>=0.5.0",
+    "langdetect>=1.0.9",
+    
+    # Web scraping and browser automation
+    "playwright>=1.40.0",
+    
+    # Vector stores (from M4.E1)
     "lancedb>=0.3.0",
     "qdrant-client>=1.6.0",
-    "sentence-transformers>=2.2.0",
-    "playwright>=1.40.0",
 ]
 
 [project.scripts]
@@ -103,6 +119,10 @@ profile = "black"
 src_paths = ["src", "tests"]
 
 [tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (may require external services)",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
