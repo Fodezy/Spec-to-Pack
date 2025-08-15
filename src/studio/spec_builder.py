@@ -69,14 +69,15 @@ class SpecBuilder:
                 description=idea_data.get("description")
             ),
             "problem": Problem(
-                statement=idea_data.get("problem_statement", "Placeholder problem statement"),
-                context=idea_data.get("target_audience")
+                statement=idea_data.get("problem_statement") or idea_data.get("problem", "Placeholder problem statement"),
+                context=idea_data.get("target_audience") or idea_data.get("context") or 
+                        (idea_data.get("audience", {}).get("use_context") if isinstance(idea_data.get("audience"), dict) else None)
             ),
             "success_metrics": SuccessMetrics(
-                metrics=idea_data.get("key_features", [])
+                metrics=self._extract_metrics(idea_data)
             ),
             "constraints": Constraints(
-                offline_ok=decisions_data.get("offline", True),
+                offline_ok=decisions_data.get("offline", False),  # Default to online for better RAG experience
                 budget_tokens=decisions_data.get("budget_tokens", 80000)
             )
         }
@@ -85,6 +86,31 @@ class SpecBuilder:
         dials = Dials(**dials_data)
 
         return spec, dials
+
+    def _extract_metrics(self, idea_data: dict) -> list[str]:
+        """Extract success metrics from idea data, handling both dict and list formats."""
+        metrics = []
+        
+        # Check for success_metrics field
+        success_metrics = idea_data.get("success_metrics")
+        if success_metrics:
+            if isinstance(success_metrics, dict):
+                # Convert dict values to list of strings
+                for key, value in success_metrics.items():
+                    if isinstance(value, str):
+                        metrics.append(f"{key}: {value}")
+                    else:
+                        metrics.append(f"{key}: {str(value)}")
+            elif isinstance(success_metrics, list):
+                metrics.extend([str(m) for m in success_metrics])
+        
+        # Fallback to key_features if no success_metrics
+        if not metrics:
+            key_features = idea_data.get("key_features", [])
+            if isinstance(key_features, list):
+                metrics.extend([str(f) for f in key_features])
+        
+        return metrics
 
     def build_minimal_spec(self) -> SourceSpec:
         """Build a minimal valid SourceSpec for testing."""

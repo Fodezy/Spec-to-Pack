@@ -44,5 +44,5 @@ backup_retention_days: 30
 monitoring: "real-time performance and error tracking"
 
 # Build configuration
-offline: true
+offline: false
 budget_tokens: 80000

@@ -64,7 +64,14 @@ class Orchestrator:
         self.llm_adapter = llm_adapter or StubLLMAdapter()
         self.vector_store_adapter = vector_store_adapter or StubVectorStoreAdapter()
         self.browser_adapter = browser_adapter or StubBrowserAdapter()
-        self.search_adapter = search_adapter or StubSearchAdapter()
+        # Use real search adapter by default, only stub if explicitly passed
+        if search_adapter is None:
+            try:
+                self.search_adapter = FallbackSearchAdapter()
+            except ImportError:
+                self.search_adapter = StubSearchAdapter()
+        else:
+            self.search_adapter = search_adapter
         
         # Use dual model embeddings by default, fallback to stub
         if embeddings_adapter is None:

@@ -79,7 +79,7 @@ class Problem(BaseModel):
 
 class Constraints(BaseModel):
     """System constraints."""
-    offline_ok: bool = True
+    offline_ok: bool = False  # Default to online for better RAG experience
     budget_tokens: int = 80000
     max_duration_minutes: int = 30
 
