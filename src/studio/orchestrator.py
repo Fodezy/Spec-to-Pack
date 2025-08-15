@@ -63,7 +63,12 @@ class Orchestrator:
         # Adapters (use stubs if not provided)
         self.llm_adapter = llm_adapter or StubLLMAdapter()
         self.vector_store_adapter = vector_store_adapter or StubVectorStoreAdapter()
-        self.browser_adapter = browser_adapter or StubBrowserAdapter()
+        # Use smart browser adapter selection
+        if browser_adapter is None:
+            # Let LibrarianAgent handle smart adapter selection based on context
+            self.browser_adapter = None
+        else:
+            self.browser_adapter = browser_adapter
         # Use real search adapter by default, only stub if explicitly passed
         if search_adapter is None:
             try:
