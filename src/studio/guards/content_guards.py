@@ -2,10 +2,12 @@
 
 import time
 from collections import defaultdict
-from typing import Dict, Set
+from typing import Dict, Optional, Set
 from urllib.parse import urlparse
 
 import requests
+
+from ..logging import RAGLogger
 
 
 class ContentGuard:
@@ -15,7 +17,8 @@ class ContentGuard:
                  respect_robots_txt: bool = True,
                  max_doc_tokens: int = 8000,
                  max_docs_per_domain: int = 3,
-                 rate_limit_delay: float = 2.0):
+                 rate_limit_delay: float = 2.0,
+                 logger: Optional[RAGLogger] = None):
         """Initialize content guard.
         
         Args:
@@ -23,11 +26,13 @@ class ContentGuard:
             max_doc_tokens: Maximum tokens per document (~6000 words)
             max_docs_per_domain: Maximum documents per domain
             rate_limit_delay: Delay between requests to same domain (seconds)
+            logger: Optional RAG logger for structured logging
         """
         self.respect_robots_txt = respect_robots_txt
         self.max_doc_tokens = max_doc_tokens
         self.max_docs_per_domain = max_docs_per_domain
         self.rate_limit_delay = rate_limit_delay
+        self.logger = logger
         
         # Track requests per domain
         self.domain_request_count: Dict[str, int] = defaultdict(int)
@@ -51,12 +56,23 @@ class ContentGuard:
         
         # Check domain request limits
         if self.domain_request_count[domain] >= self.max_docs_per_domain:
+            if self.logger:
+                self.logger.content_guard_check(
+                    url, "domain_limit", False, 
+                    {"current_count": self.domain_request_count[domain], 
+                     "limit": self.max_docs_per_domain}
+                )
             raise ValueError(f"Domain limit exceeded: {domain} (max {self.max_docs_per_domain})")
         
         # Check robots.txt if enabled
         if self.respect_robots_txt:
             if not self._check_robots_txt(domain, url):
+                if self.logger:
+                    self.logger.content_guard_check(url, "robots_txt", False)
                 raise ValueError(f"URL blocked by robots.txt: {url}")
+        
+        if self.logger:
+            self.logger.content_guard_check(url, "url_allowed", True)
                 
         return True
         
@@ -75,6 +91,8 @@ class ContentGuard:
             time_since_last = current_time - self.domain_last_request[domain]
             if time_since_last < self.rate_limit_delay:
                 wait_time = self.rate_limit_delay - time_since_last
+                if self.logger:
+                    self.logger.rate_limit_triggered(domain, wait_time)
                 time.sleep(wait_time)
         
         # Update last request time
@@ -112,6 +130,15 @@ class ContentGuard:
             last_period = truncated.rfind('.')
             if last_period > max_chars * 0.8:  # If sentence boundary is reasonably close
                 truncated = truncated[:last_period + 1]
+            
+            if self.logger:
+                self.logger.content_guard_check(
+                    url, "content_truncated", True,
+                    {"original_tokens": estimated_tokens, 
+                     "max_tokens": self.max_doc_tokens,
+                     "original_length": len(content),
+                     "truncated_length": len(truncated)}
+                )
                 
             return truncated + f"\n\n[Content truncated at {self.max_doc_tokens} tokens]"
         

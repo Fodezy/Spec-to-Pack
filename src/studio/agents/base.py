@@ -105,13 +105,14 @@ class FramerAgent(Agent):
 class LibrarianAgent(Agent):
     """Agent that fetches and indexes research content with RAG capabilities."""
 
-    def __init__(self, search_adapter=None, browser_adapter=None, vector_store_adapter=None, embeddings_model=None, cache_manager=None):
+    def __init__(self, search_adapter=None, browser_adapter=None, vector_store_adapter=None, embeddings_model=None, cache_manager=None, rag_logger=None):
         super().__init__("LibrarianAgent")
         self.search_adapter = search_adapter
         self.browser_adapter = browser_adapter
         self.vector_store_adapter = vector_store_adapter  
         self.embeddings_model = embeddings_model
         self.cache_manager = cache_manager
+        self.rag_logger = rag_logger
 
     def run(self, ctx: RunContext, spec: SourceSpec, blackboard: Blackboard) -> AgentOutput:
         """Fetch and index research content with RAG capabilities."""
@@ -123,6 +124,10 @@ class LibrarianAgent(Agent):
         
         # Handle offline mode
         if ctx.offline:
+            if self.rag_logger:
+                self.rag_logger.research_pipeline_started(spec.meta.name, 0)
+                self.rag_logger.info("Research skipped due to offline mode", 
+                                   agent="LibrarianAgent", mode="offline")
             return AgentOutput(
                 notes={"action": "skipped_research", "reason": "offline_mode"},
                 artifacts=[],
@@ -169,6 +174,12 @@ class LibrarianAgent(Agent):
         fetched_count = 0
         error_count = 0
         
+        # Log research pipeline start
+        max_docs = getattr(spec, 'research_context', None)
+        max_doc_limit = max_docs.max_documents if max_docs and hasattr(max_docs, 'max_documents') else 10
+        if self.rag_logger:
+            self.rag_logger.research_pipeline_started(spec.meta.name, max_doc_limit)
+        
         try:
             # Generate research queries from spec
             queries = self._generate_research_queries(spec)
@@ -180,9 +191,18 @@ class LibrarianAgent(Agent):
                 cached_results = self.cache_manager.get_search_results(query, "general")
                 if cached_results:
                     search_results = cached_results
+                    if self.rag_logger:
+                        self.rag_logger.cache_operation("hit", "search_results", query, hit=True)
                 else:
                     # Perform search
+                    if self.rag_logger:
+                        self.rag_logger.search_started(query, "general", 5)
+                    
                     search_results = self.search_adapter.search(query, "general", limit=5)
+                    
+                    if self.rag_logger:
+                        self.rag_logger.search_completed(query, "general", len(search_results), 0)
+                    
                     # Cache results
                     self.cache_manager.cache_search_results(query, "general", search_results)
                 
@@ -219,9 +239,15 @@ class LibrarianAgent(Agent):
                         time.sleep(2.0)  # 2 second delay
                     
                     # Fetch content with browser adapter
+                    if self.rag_logger:
+                        self.rag_logger.web_fetch_started(url)
+                    
                     html_content = self.browser_adapter.fetch(url, offline_mode=ctx.offline)
                     
                     if html_content and hasattr(html_content, 'status_code') and html_content.status_code == 200:
+                        if self.rag_logger:
+                            content_length = len(html_content.text) if hasattr(html_content, 'text') else 0
+                            self.rag_logger.web_fetch_completed(url, content_length, html_content.status_code, 0)
                         # Extract clean text
                         text_content = self.browser_adapter.extract(html_content)
                         

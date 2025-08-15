@@ -28,6 +28,7 @@ from .agents.base import (
 )
 from .artifacts import ArtifactIndex, Blackboard
 from .audit import AuditLog
+from .logging import RAGLogger
 from .rendering import TemplateRenderer
 from .types import PackType, RunContext, SourceSpec, Status
 from .validation import SchemaValidator
@@ -49,21 +50,28 @@ class Orchestrator:
     def __init__(
         self,
         step_budget: int = 12,  # Per R1 specification
-        timeout_per_step_sec: int = 20,  # Per R1 specification
+        timeout_per_step_sec: int = 60,  # Increased for browser content fetching
         llm_adapter: LLMAdapter | None = None,
         vector_store_adapter: VectorStoreAdapter | None = None,
         browser_adapter: BrowserAdapter | None = None,
         embeddings_adapter: EmbeddingsAdapter | None = None,
-        search_adapter: SearchAdapter | None = None
+        search_adapter: SearchAdapter | None = None,
+        rag_logger: RAGLogger | None = None
     ):
         """Initialize orchestrator with budgets and adapters."""
         self.step_budget = step_budget
         self.timeout_per_step_sec = timeout_per_step_sec
+        self.rag_logger = rag_logger
 
         # Adapters (use stubs if not provided)
         self.llm_adapter = llm_adapter or StubLLMAdapter()
         self.vector_store_adapter = vector_store_adapter or StubVectorStoreAdapter()
-        self.browser_adapter = browser_adapter or StubBrowserAdapter()
+        # Use smart browser adapter selection
+        if browser_adapter is None:
+            # Let LibrarianAgent handle smart adapter selection based on context
+            self.browser_adapter = None
+        else:
+            self.browser_adapter = browser_adapter
         # Use real search adapter by default, only stub if explicitly passed
         if search_adapter is None:
             try:
@@ -98,7 +106,8 @@ class Orchestrator:
                 browser_adapter=self.browser_adapter,
                 vector_store_adapter=self.vector_store_adapter,
                 embeddings_model=self.embeddings_adapter,
-                cache_manager=self.cache_manager
+                cache_manager=self.cache_manager,
+                rag_logger=self.rag_logger
             ),
             "prd_writer": PRDWriterAgent(),
             "diagrammer": DiagrammerAgent(),
